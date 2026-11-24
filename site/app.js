@@ -3,7 +3,7 @@
 // reads the finished JSON file.
 "use strict";
 
-const state = { data: null, players: [], sort: { key: "playtime", desc: true }, query: "", page: null };
+const state = { data: null, players: [], clans: [], sort: { key: "playtime", desc: true }, query: "", page: null };
 const app = document.getElementById("app");
 
 // ---------------------------------------------------------------- helpers
@@ -55,6 +55,10 @@ function head(uuid, cls = "head", size = 64) {
               onerror="this.onerror=null;this.src=FALLBACK_HEAD">`;
 }
 
+function clanTag(clan) {
+  return clan ? `<span class="tag" style="--c:${esc(clan.color)}" title="${esc(clan.name)}">${esc(clan.tag)}</span>` : "";
+}
+
 function statusPill(p) {
   if (p.online && p.afk) return `<span class="pill afk"><span class="dot"></span>AFK</span>`;
   if (p.online) return `<span class="pill online"><span class="dot"></span>Online</span>`;
@@ -76,6 +80,7 @@ async function load() {
     const data = await r.json();
     state.data = data;
     state.players = data.players || [];
+    state.clans = data.clans || [];
     const server = data.server || {};
     const name = server.name || "Server Stats";
     document.getElementById("server-name").textContent = name;
@@ -116,6 +121,7 @@ function render(navigated = true) {
   state.page = page;
   if (page === "players") { app.innerHTML = notices() + playersPage(); drawPlayerRows(); }
   else if (page === "player") app.innerHTML = playerPage(id);
+  else if (page === "clans") app.innerHTML = notices() + clansPage();
   else app.innerHTML = notices() + homePage();
 }
 
@@ -138,7 +144,7 @@ function board(title, key, show) {
   const max = top.length ? top[0][key] : 1;
   const rows = top.map((p, i) => `<li>
       <a href="#/player/${esc(p.uuid)}"><span class="rank">${i + 1}</span>${head(p.uuid, "head sm")}
-        <span class="name">${esc(p.name)}</span><span class="amount">${show(p[key])}</span></a>
+        <span class="name">${clanTag(p.clan)}${esc(p.name)}</span><span class="amount">${show(p[key])}</span></a>
       <div class="bar"><span style="width:${Math.max(4, Math.round(p[key] / max * 100))}%"></span></div></li>`).join("");
   return `<section class="card"><h2>${esc(title)}</h2>${rows ? `<ol class="board">${rows}</ol>` : `<p class="empty">Nobody yet.</p>`}</section>`;
 }
@@ -149,7 +155,7 @@ function homePage() {
   const online = players.filter(p => p.online).sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
   const sum = key => players.reduce((total, p) => total + (p[key] || 0), 0);
   const onlineList = online.map(p => `<li><a href="#/player/${esc(p.uuid)}">${head(p.uuid)}
-      <span class="name">${esc(p.name)}</span>
+      <span class="name">${clanTag(p.clan)}${esc(p.name)}</span>
       <span class="meta">${p.afk ? `<span class="pill afk"><span class="dot"></span>AFK</span>` : esc(p.world)}</span></a></li>`).join("");
   const join = s.address ? `<p>Join us: <span class="join">${esc(s.address)}</span></p>` : `<p>What's happening on the server.</p>`;
   return `
@@ -157,9 +163,9 @@ function homePage() {
     <div class="stats">
       ${stat("Online", `${s.up ? online.length : 0}<small> / ${s.maxPlayers || 0}</small>`, "green")}
       ${stat("Players", num(players.length))}
+      ${stat("Clans", num(state.clans.length))}
       ${stat("Time played", duration(sum("playtime")))}
       ${stat("Blocks placed", num(sum("blocksPlaced")))}
-      ${stat("Mobs killed", num(sum("mobKills")))}
       ${stat("Deaths", num(sum("deaths")), "red")}
     </div>
     <div class="grid">
@@ -176,7 +182,7 @@ function homePage() {
 }
 
 const columns = [
-  { key: "name", label: "Player", cell: p => `<a href="#/player/${esc(p.uuid)}">${head(p.uuid, "head sm")}<span class="pname">${esc(p.name)}</span></a>`, text: true },
+  { key: "name", label: "Player", cell: p => `<a href="#/player/${esc(p.uuid)}">${head(p.uuid, "head sm")}${clanTag(p.clan)}<span class="pname">${esc(p.name)}</span></a>`, text: true },
   { key: "lastSeen", label: "Status", cell: p => statusPill(p), sortValue: p => p.online ? Number.MAX_SAFE_INTEGER - (p.afk ? 1 : 0) : p.lastSeen },
   { key: "playtime", label: "Playtime", cell: p => duration(p.playtime), num: true },
   { key: "activeTime", label: "Active", cell: p => duration(p.activeTime), num: true },
@@ -192,7 +198,7 @@ function playersPage() {
     <div class="page-head"><h1>Players</h1><p>Everyone who has joined. Click a column to sort.</p></div>
     <section class="card">
       <h2><span id="player-count">All players</span>
-        <input class="search" id="search" type="search" placeholder="Search players" value="${esc(state.query)}" aria-label="Search"></h2>
+        <input class="search" id="search" type="search" placeholder="Search players or clans" value="${esc(state.query)}" aria-label="Search"></h2>
       <div id="rows"></div>
     </section>`;
 }
@@ -204,7 +210,7 @@ function drawPlayerRows() {
   const value = col.sortValue || (p => col.text ? String(p[col.key]).toLowerCase() : p[col.key]);
   const q = state.query.trim().toLowerCase();
   const list = state.players
-    .filter(p => !q || p.name.toLowerCase().includes(q))
+    .filter(p => !q || p.name.toLowerCase().includes(q) || (p.clan && (p.clan.name + " " + p.clan.tag).toLowerCase().includes(q)))
     .sort((a, b) => {
       const x = value(a), y = value(b);
       const r = x < y ? -1 : x > y ? 1 : 0;
@@ -232,6 +238,7 @@ function playerPage(uuid) {
           <h1>${esc(p.name)}</h1>
           <div class="sub">
             ${statusPill(p)}
+            ${p.clan ? `<a href="#/clans">${clanTag(p.clan)}${esc(p.clan.name)}${p.clanRole && p.clanRole !== "member" ? ` · ${esc(p.clanRole)}` : ""}</a>` : ""}
             <span>Joined ${esc(date(p.firstJoin))}</span>
           </div>
         </div>
@@ -261,6 +268,37 @@ function playerPage(uuid) {
         </ul>
       </section>
     </div>`;
+}
+
+const ROLE_ORDER = { owner: 0, officer: 1, member: 2 };
+
+function clansPage() {
+  const top = `<div class="page-head"><h1>Clans</h1><p>Make your own in game with <b>/clan create &lt;name&gt; &lt;tag&gt;</b>.</p></div>`;
+  if (!state.clans.length) return top + `<section class="card"><p class="empty">No clans yet.</p></section>`;
+  const byId = new Map(state.players.map(p => [p.uuid, p]));
+  const clans = state.clans.map(c => {
+    const members = c.members.map(m => ({ ...m, player: byId.get(m.uuid) })).filter(m => m.player);
+    return {
+      ...c, members,
+      playtime: members.reduce((t, m) => t + m.player.playtime, 0),
+      blocks: members.reduce((t, m) => t + m.player.blocksPlaced, 0),
+      online: members.filter(m => m.player.online).length,
+    };
+  }).sort((a, b) => b.members.length - a.members.length || b.playtime - a.playtime);
+  return top + `<div class="grid">${clans.map(c => `
+    <section class="card">
+      <div class="clan-top">${clanTag(c)}<span class="cname">${esc(c.name)}</span></div>
+      <p class="clan-sub">Since ${esc(date(c.created))}</p>
+      <div class="clan-figures">
+        <div><b>${c.members.length}</b><span>members</span></div>
+        <div><b>${c.online}</b><span>online</span></div>
+        <div><b>${duration(c.playtime)}</b><span>played</span></div>
+        <div><b>${num(c.blocks)}</b><span>blocks placed</span></div>
+      </div>
+      <div class="members">${[...c.members].sort((a, b) => (ROLE_ORDER[a.role] ?? 3) - (ROLE_ORDER[b.role] ?? 3) || a.player.name.localeCompare(b.player.name)).map(m => `<a class="member" href="#/player/${esc(m.uuid)}">${head(m.uuid)}
+          ${esc(m.player.name)}${m.role !== "member" ? `<span class="role">${esc(m.role)}</span>` : ""}
+          ${m.player.online ? `<span class="dot" title="online"></span>` : ""}</a>`).join("")}</div>
+    </section>`).join("")}</div>`;
 }
 
 // ---------------------------------------------------------------- events

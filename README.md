@@ -4,9 +4,10 @@ The stats website for our Minecraft server (MineHosting). It shows:
 
 - who is **online** right now (and who is AFK),
 - **top lists**: most playtime, top builders, top miners, monster hunters, most advancements,
-- a **players** page with every player (sortable and searchable) and a page for each player.
+- a **players** page with every player (sortable and searchable) and a page for each player,
+- a **clans** page: every clan with its tag, members (owner, officers), how many are online and how much they played. The clan tag is also shown next to player names everywhere.
 
-There are **no clans** and **no money** on this website.
+There is **no money** on this website, and the contents of the clan chests are never shown.
 
 ![Preview of the website](docs/preview.png)
 
@@ -23,7 +24,7 @@ plugin "Clyro" ── copies stats ──▶ MySQL database ──▶ reads the 
                                          └── uses the secrets DB_HOST, DB_USER, DB_PASSWORD ...
 ```
 
-1. The Minecraft plugin (repository **MinecraftPlugin**, branch **MineHosting**) copies the player stats into a MySQL database every 30 seconds.
+1. The Minecraft plugin (repository **MinecraftPlugin**, branch **MineHosting**) copies the player stats and clans into a MySQL database every 30 seconds.
 2. Every 10 minutes, GitHub runs the workflow **"Update website"**. It logs in to the database with the **secrets** you saved in this repository, reads the stats and builds the website.
 3. GitHub Pages shows the website.
 
@@ -126,7 +127,7 @@ GitHub pauses timed workflows in public repositories when nothing changed in the
 ## For developers
 
 - `site/` – the website itself (plain HTML, CSS and JavaScript, no build tools). It only reads `data/stats.json`.
-- `scripts/export.mjs` – reads the database (tables `mc_players`, `mc_online`, `mc_server`) and writes `_site/` = `site/` + `data/stats.json`.
+- `scripts/export.mjs` – reads the database (tables `mc_players`, `mc_online`, `mc_clans`, `mc_clan_members`, `mc_server`) and writes `_site/` = `site/` + `data/stats.json`.
 - `.github/workflows/deploy.yml` – runs the export every 10 minutes and publishes `_site/` on GitHub Pages.
 
 Optional repository **variables**: `DB_TABLE_PREFIX` (default `mc_`, must match `database.table-prefix` in the plugin), `DB_SSL` (`true` for an encrypted database connection).

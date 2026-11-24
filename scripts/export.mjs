@@ -1,4 +1,4 @@
-// Reads the stats that the Minecraft plugin copied into the MySQL/MariaDB database and writes
+// Reads the stats and clans that the Minecraft plugin copied into the MySQL/MariaDB database and writes
 // the finished website into the folder _site/ (the page files from site/ plus data/stats.json).
 //
 // It runs on GitHub Actions (see .github/workflows/deploy.yml). The database login comes from the
@@ -55,7 +55,14 @@ async function readDatabase() {
     const [players] = await connection.query(`SELECT * FROM ${t("players")}`);
     const [online] = await connection.query(`SELECT * FROM ${t("online")}`);
     const [servers] = await connection.query(`SELECT * FROM ${t("server")} WHERE id = 1`);
-    return { players, online, server: servers[0] };
+    // Clan tables only exist with a plugin version that has clans.
+    const optional = sql => connection.query(sql).then(([rows]) => rows, e => {
+      if (e.code === "ER_NO_SUCH_TABLE") return [];
+      throw e;
+    });
+    const clans = await optional(`SELECT * FROM ${t("clans")}`);
+    const clanMembers = await optional(`SELECT * FROM ${t("clan_members")}`);
+    return { players, online, server: servers[0], clans, clanMembers };
   } finally {
     await connection.end();
   }
@@ -65,11 +72,15 @@ function toNumber(value) {
   return Number(value || 0);
 }
 
-function build({ players, online, server }) {
+function build({ players, online, server, clans, clanMembers }) {
   const now = Date.now();
   const serverUpdated = server ? toNumber(server.updated_at) : 0;
   const up = !!server && now - serverUpdated < SERVER_STALE_MS;
   const onlineById = new Map(up ? online.map(o => [o.uuid, o]) : []);
+  const clanById = new Map(clans.map(c => [c.id, {
+    id: c.id, name: c.name, tag: c.tag, color: c.color, owner: c.owner, created: toNumber(c.created),
+  }]));
+  const membership = new Map(clanMembers.map(m => [m.uuid, m]));
   return {
     configured: true,
     generatedAt: now,
@@ -83,8 +94,14 @@ function build({ players, online, server }) {
       updatedAt: serverUpdated,
       up,
     },
+    clans: [...clanById.values()].map(c => ({
+      ...c,
+      members: clanMembers.filter(m => m.clan_id === c.id).map(m => ({ uuid: m.uuid, role: m.role })),
+    })),
     players: players.map(r => {
       const o = onlineById.get(r.uuid);
+      const m = membership.get(r.uuid);
+      const clan = m ? clanById.get(m.clan_id) : null;
       return {
         uuid: r.uuid,
         name: r.name,
@@ -101,6 +118,8 @@ function build({ players, online, server }) {
         online: !!o,
         afk: !!o && !!o.afk,
         world: o ? o.world : "",
+        clan: clan ? { id: clan.id, name: clan.name, tag: clan.tag, color: clan.color } : null,
+        clanRole: clan ? m.role : null,
       };
     }),
   };
@@ -129,7 +148,7 @@ async function main() {
   if (!config.host || !config.database || !config.user) {
     console.log("::warning::The database secrets (DB_HOST, DB_NAME, DB_USER, DB_PASSWORD) are not set yet. "
       + "The website is built without stats. See README.md, Setup.");
-    data = { configured: false, generatedAt: Date.now(), server: { name: site.name || "Minecraft Server", address: site.address }, players: [] };
+    data = { configured: false, generatedAt: Date.now(), server: { name: site.name || "Minecraft Server", address: site.address }, players: [], clans: [] };
   } else {
     try {
       data = build(await readDatabase());
