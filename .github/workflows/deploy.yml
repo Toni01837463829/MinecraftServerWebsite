@@ -1,0 +1,74 @@
+# Builds the website and publishes it on GitHub Pages.
+#
+# Every 10 minutes (and after every change in this repository, and when you click "Run workflow")
+# it reads the stats from the database and puts them on the website.
+#
+# The database login comes from this repository's secrets (Settings > Secrets and variables > Actions).
+# The secrets are only used here, on GitHub's computer. They are never put into the website.
+name: Update website
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Every 10 minutes. GitHub sometimes starts scheduled runs a few minutes late.
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one update at a time. A new one waits until the running one is done.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Set up Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Read the stats from the database
+        run: npm run export
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_TABLE_PREFIX: ${{ vars.DB_TABLE_PREFIX }}
+          DB_SSL: ${{ vars.DB_SSL }}
+          SERVER_NAME: ${{ vars.SERVER_NAME }}
+          SERVER_ADDRESS: ${{ vars.SERVER_ADDRESS }}
+          PAGES_URL: ${{ steps.pages.outputs.base_url }}
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
