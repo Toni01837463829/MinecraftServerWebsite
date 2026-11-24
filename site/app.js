@@ -355,14 +355,6 @@ function infoPage() {
     </section>`).join("");
   return `
     <div class="page-head"><h1>Befehle</h1><p>Alle Befehle auf dem Server. Im Spiel zeigt <b>/clyro</b> dieselbe Liste.${s.address ? ` Server-Adresse: <span class="join">${esc(s.address)}</span>` : ""}</p></div>
-    <section class="card">
-      <h2>Kurz erklärt</h2>
-      <ul class="facts">
-        <li><span>Wörter in &lt;spitzen Klammern&gt;</span><span class="v">musst du ausfüllen, ohne die Klammern</span></li>
-        <li><span>Wörter in [eckigen Klammern]</span><span class="v">kannst du weglassen</span></li>
-        <li><span>Spielzeit</span><span class="v">zählt immer, aktive Zeit nur, wenn du nicht AFK bist (5 Minuten nichts tun)</span></li>
-      </ul>
-    </section>
     <div class="info-grid">${sections}</div>`;
 }
 
