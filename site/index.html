@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Server Stats</title>
-  <meta name="description" content="Who is online and player stats of our Minecraft server.">
+  <title>Server-Statistiken</title>
+  <meta name="description" content="Wer online ist, Spieler-Statistiken, Clans und alle Befehle unseres Minecraft-Servers.">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="preload" href="fonts/monocraft.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="style.css">
@@ -14,24 +14,25 @@
     <div class="topbar-inner">
       <a class="brand" href="#/">
         <img class="brand-icon" src="favicon.svg" alt="">
-        <span id="server-name">Server Stats</span>
+        <span id="server-name">Server-Statistiken</span>
       </a>
-      <nav class="tabs" aria-label="Pages">
-        <a href="#/" data-page="home">Overview</a>
-        <a href="#/players" data-page="players">Players</a>
+      <nav class="tabs" aria-label="Seiten">
+        <a href="#/" data-page="home">Übersicht</a>
+        <a href="#/players" data-page="players">Spieler</a>
         <a href="#/clans" data-page="clans">Clans</a>
+        <a href="#/info" data-page="info">Befehle</a>
       </nav>
-      <span class="live" id="live"><span class="pulse"></span><span id="live-text">Loading</span></span>
+      <span class="live" id="live"><span class="pulse"></span><span id="live-text">Lädt</span></span>
     </div>
   </header>
 
   <main id="app">
-    <div class="card loading">Loading...</div>
+    <div class="card loading">Lädt...</div>
   </main>
 
   <footer>
     <span id="updated">&nbsp;</span>
-    <span>The stats update about every 10 minutes</span>
+    <span>Die Statistiken werden etwa alle 10 Minuten aktualisiert</span>
   </footer>
 
   <script src="app.js"></script>

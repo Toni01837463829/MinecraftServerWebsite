@@ -15,29 +15,29 @@ function esc(text) {
 function duration(seconds) {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
-  if (h >= 48) return `${Math.floor(h / 24)}d ${h % 24}h`;
-  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  if (h >= 48) return `${Math.floor(h / 24)} T ${h % 24} h`;
+  return h > 0 ? `${h} h ${m} min` : `${m} min`;
 }
 
 function ago(millis) {
   const s = Math.max(0, (Date.now() - millis) / 1000);
-  if (s < 60) return "just now";
-  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
-  if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
+  if (s < 60) return "gerade eben";
+  if (s < 3600) return `vor ${Math.floor(s / 60)} Min.`;
+  if (s < 86400) return `vor ${Math.floor(s / 3600)} Std.`;
   const d = Math.floor(s / 86400);
-  return d === 1 ? "yesterday" : `${d} days ago`;
+  return d === 1 ? "gestern" : `vor ${d} Tagen`;
 }
 
 function date(millis) {
-  return new Date(millis).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  return new Date(millis).toLocaleDateString("de-DE", { year: "numeric", month: "short", day: "numeric" });
 }
 
 function time(millis) {
-  return new Date(millis).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return new Date(millis).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
 }
 
 function num(n) {
-  return Number(n || 0).toLocaleString();
+  return Number(n || 0).toLocaleString("de-DE");
 }
 
 // A blocky 8x8 face, shown when mc-heads.net can't be reached.
@@ -82,22 +82,22 @@ async function load() {
     state.players = data.players || [];
     state.clans = data.clans || [];
     const server = data.server || {};
-    const name = server.name || "Server Stats";
+    const name = server.name || "Server-Statistiken";
     document.getElementById("server-name").textContent = name;
     document.title = name;
     if (!data.configured) {
       live.classList.add("offline");
-      liveText.textContent = "Not set up";
+      liveText.textContent = "Nicht eingerichtet";
     } else {
       live.classList.toggle("offline", !server.up);
       liveText.textContent = server.up ? `${server.onlineCount} online` : "Server offline";
     }
-    document.getElementById("updated").textContent = data.generatedAt ? "Updated " + time(data.generatedAt) : "";
+    document.getElementById("updated").textContent = data.generatedAt ? "Aktualisiert um " + time(data.generatedAt) : "";
     render(false);
   } catch (e) {
     live.classList.add("offline");
-    liveText.textContent = "No data";
-    if (!state.data) app.innerHTML = `<div class="card loading">The stats can't be loaded right now. Try again in a minute.</div>`;
+    liveText.textContent = "Keine Daten";
+    if (!state.data) app.innerHTML = `<div class="card loading">Die Statistiken können gerade nicht geladen werden. Versuche es in einer Minute nochmal.</div>`;
   }
 }
 
@@ -122,6 +122,7 @@ function render(navigated = true) {
   if (page === "players") { app.innerHTML = notices() + playersPage(); drawPlayerRows(); }
   else if (page === "player") app.innerHTML = playerPage(id);
   else if (page === "clans") app.innerHTML = notices() + clansPage();
+  else if (page === "info") app.innerHTML = infoPage();
   else app.innerHTML = notices() + homePage();
 }
 
@@ -129,11 +130,11 @@ function render(navigated = true) {
 function notices() {
   const d = state.data;
   if (!d.configured) {
-    return `<div class="notice">This website isn't connected to the database yet. Add the database secrets in the
-      GitHub repository (see README.md, "Setup"), then run the "Update website" workflow.</div>`;
+    return `<div class="notice">Diese Webseite ist noch nicht mit der Datenbank verbunden. Trage die Datenbank-Secrets im
+      GitHub-Repository ein (siehe README.md, "Setup") und starte dann den Workflow "Update website".</div>`;
   }
   if (d.error) {
-    return `<div class="notice">The last update couldn't read the database, so these numbers may be old.
+    return `<div class="notice">Beim letzten Update konnte die Datenbank nicht gelesen werden. Die Zahlen können also veraltet sein.
       (${esc(d.error)})</div>`;
   }
   return "";
@@ -146,7 +147,7 @@ function board(title, key, show) {
       <a href="#/player/${esc(p.uuid)}"><span class="rank">${i + 1}</span>${head(p.uuid, "head sm")}
         <span class="name">${clanTag(p.clan)}${esc(p.name)}</span><span class="amount">${show(p[key])}</span></a>
       <div class="bar"><span style="width:${Math.max(4, Math.round(p[key] / max * 100))}%"></span></div></li>`).join("");
-  return `<section class="card"><h2>${esc(title)}</h2>${rows ? `<ol class="board">${rows}</ol>` : `<p class="empty">Nobody yet.</p>`}</section>`;
+  return `<section class="card"><h2>${esc(title)}</h2>${rows ? `<ol class="board">${rows}</ol>` : `<p class="empty">Noch niemand.</p>`}</section>`;
 }
 
 function homePage() {
@@ -157,48 +158,48 @@ function homePage() {
   const onlineList = online.map(p => `<li><a href="#/player/${esc(p.uuid)}">${head(p.uuid)}
       <span class="name">${clanTag(p.clan)}${esc(p.name)}</span>
       <span class="meta">${p.afk ? `<span class="pill afk"><span class="dot"></span>AFK</span>` : esc(p.world)}</span></a></li>`).join("");
-  const join = s.address ? `<p>Join us: <span class="join">${esc(s.address)}</span></p>` : `<p>What's happening on the server.</p>`;
+  const join = s.address ? `<p>Spiel mit: <span class="join">${esc(s.address)}</span></p>` : `<p>Was gerade auf dem Server los ist.</p>`;
   return `
-    <div class="page-head"><h1>Overview</h1>${join}</div>
+    <div class="page-head"><h1>Übersicht</h1>${join}</div>
     <div class="stats">
       ${stat("Online", `${s.up ? online.length : 0}<small> / ${s.maxPlayers || 0}</small>`, "green")}
-      ${stat("Players", num(players.length))}
+      ${stat("Spieler", num(players.length))}
       ${stat("Clans", num(state.clans.length))}
-      ${stat("Time played", duration(sum("playtime")))}
-      ${stat("Blocks placed", num(sum("blocksPlaced")))}
-      ${stat("Deaths", num(sum("deaths")), "red")}
+      ${stat("Gespielte Zeit", duration(sum("playtime")))}
+      ${stat("Blöcke gesetzt", num(sum("blocksPlaced")))}
+      ${stat("Tode", num(sum("deaths")), "red")}
     </div>
     <div class="grid">
       <section class="card">
-        <h2>Online <span class="hint">${s.up ? "at " + time(s.updatedAt) : "server offline"}</span></h2>
-        ${onlineList ? `<ul class="people">${onlineList}</ul>` : `<p class="empty">${s.up ? "Nobody is online right now." : "The server is offline."}</p>`}
+        <h2>Online <span class="hint">${s.up ? "um " + time(s.updatedAt) : "Server offline"}</span></h2>
+        ${onlineList ? `<ul class="people">${onlineList}</ul>` : `<p class="empty">${s.up ? "Gerade ist niemand online." : "Der Server ist offline."}</p>`}
       </section>
-      ${board("Most playtime", "playtime", duration)}
-      ${board("Top builders", "blocksPlaced", num)}
-      ${board("Top miners", "blocksBroken", num)}
-      ${board("Monster hunters", "mobKills", num)}
-      ${board("Most advancements", "advancements", num)}
+      ${board("Meiste Spielzeit", "playtime", duration)}
+      ${board("Top-Baumeister", "blocksPlaced", num)}
+      ${board("Top-Miner", "blocksBroken", num)}
+      ${board("Monsterjäger", "mobKills", num)}
+      ${board("Meiste Fortschritte", "advancements", num)}
     </div>`;
 }
 
 const columns = [
-  { key: "name", label: "Player", cell: p => `<a href="#/player/${esc(p.uuid)}">${head(p.uuid, "head sm")}${clanTag(p.clan)}<span class="pname">${esc(p.name)}</span></a>`, text: true },
+  { key: "name", label: "Spieler", cell: p => `<a href="#/player/${esc(p.uuid)}">${head(p.uuid, "head sm")}${clanTag(p.clan)}<span class="pname">${esc(p.name)}</span></a>`, text: true },
   { key: "lastSeen", label: "Status", cell: p => statusPill(p), sortValue: p => p.online ? Number.MAX_SAFE_INTEGER - (p.afk ? 1 : 0) : p.lastSeen },
-  { key: "playtime", label: "Playtime", cell: p => duration(p.playtime), num: true },
-  { key: "activeTime", label: "Active", cell: p => duration(p.activeTime), num: true },
-  { key: "blocksPlaced", label: "Placed", cell: p => num(p.blocksPlaced), num: true },
-  { key: "blocksBroken", label: "Broken", cell: p => num(p.blocksBroken), num: true },
-  { key: "mobKills", label: "Mob kills", cell: p => num(p.mobKills), num: true },
-  { key: "deaths", label: "Deaths", cell: p => num(p.deaths), num: true },
-  { key: "advancements", label: "Advancements", cell: p => num(p.advancements), num: true },
+  { key: "playtime", label: "Spielzeit", cell: p => duration(p.playtime), num: true },
+  { key: "activeTime", label: "Aktiv", cell: p => duration(p.activeTime), num: true },
+  { key: "blocksPlaced", label: "Gesetzt", cell: p => num(p.blocksPlaced), num: true },
+  { key: "blocksBroken", label: "Abgebaut", cell: p => num(p.blocksBroken), num: true },
+  { key: "mobKills", label: "Mob-Kills", cell: p => num(p.mobKills), num: true },
+  { key: "deaths", label: "Tode", cell: p => num(p.deaths), num: true },
+  { key: "advancements", label: "Fortschritte", cell: p => num(p.advancements), num: true },
 ];
 
 function playersPage() {
   return `
-    <div class="page-head"><h1>Players</h1><p>Everyone who has joined. Click a column to sort.</p></div>
+    <div class="page-head"><h1>Spieler</h1><p>Alle, die schon mal da waren. Klicke auf eine Spalte zum Sortieren.</p></div>
     <section class="card">
-      <h2><span id="player-count">All players</span>
-        <input class="search" id="search" type="search" placeholder="Search players or clans" value="${esc(state.query)}" aria-label="Search"></h2>
+      <h2><span id="player-count">Alle Spieler</span>
+        <input class="search" id="search" type="search" placeholder="Spieler oder Clans suchen" value="${esc(state.query)}" aria-label="Suchen"></h2>
       <div id="rows"></div>
     </section>`;
 }
@@ -216,21 +217,21 @@ function drawPlayerRows() {
       const r = x < y ? -1 : x > y ? 1 : 0;
       return state.sort.desc ? -r : r;
     });
-  document.getElementById("player-count").textContent = `${list.length} of ${state.players.length} players`;
+  document.getElementById("player-count").textContent = `${list.length} von ${state.players.length} Spielern`;
   const headers = columns.map(c => `<th class="${c.num ? "num" : ""} ${c.key === state.sort.key ? "sorted" : ""}" data-sort="${c.key}" tabindex="0">
       ${esc(c.label)}${c.key === state.sort.key ? `<span class="arrow">${state.sort.desc ? "▼" : "▲"}</span>` : ""}</th>`).join("");
   const rows = list.map(p => `<tr>${columns.map(c => `<td class="${c.num ? "num" : ""}">${c.cell(p)}</td>`).join("")}</tr>`).join("");
   target.innerHTML = rows
     ? `<div class="table-wrap"><table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table></div>`
-    : `<p class="empty">${state.players.length ? "No player matches your search." : "Nobody has joined yet."}</p>`;
+    : `<p class="empty">${state.players.length ? "Kein Spieler passt zu deiner Suche." : "Es war noch niemand da."}</p>`;
 }
 
 function playerPage(uuid) {
   const p = state.players.find(x => x.uuid === uuid);
-  if (!p) return `<a class="back" href="#/players">← All players</a><section class="card"><h2>Player not found</h2></section>`;
+  if (!p) return `<a class="back" href="#/players">← Alle Spieler</a><section class="card"><h2>Spieler nicht gefunden</h2></section>`;
   const afkTime = Math.max(0, p.playtime - p.activeTime);
   return `
-    <a class="back" href="#/players">← All players</a>
+    <a class="back" href="#/players">← Alle Spieler</a>
     <section class="card">
       <div class="profile">
         ${head(p.uuid, "head xl", 128)}
@@ -238,43 +239,45 @@ function playerPage(uuid) {
           <h1>${esc(p.name)}</h1>
           <div class="sub">
             ${statusPill(p)}
-            ${p.clan ? `<a href="#/clans">${clanTag(p.clan)}${esc(p.clan.name)}${p.clanRole && p.clanRole !== "member" ? ` · ${esc(p.clanRole)}` : ""}</a>` : ""}
-            <span>Joined ${esc(date(p.firstJoin))}</span>
+            ${p.clan ? `<a href="#/clans">${clanTag(p.clan)}${esc(p.clan.name)}${p.clanRole && p.clanRole !== "member" ? ` · ${esc(roleName(p.clanRole))}` : ""}</a>` : ""}
+            <span>Dabei seit ${esc(date(p.firstJoin))}</span>
           </div>
         </div>
       </div>
     </section>
     <div class="split">
       <section class="card">
-        <h2>Stats</h2>
+        <h2>Statistiken</h2>
         <div class="stats flat">
-          ${stat("Playtime", duration(p.playtime))}
-          ${stat("Active time", duration(p.activeTime), "green")}
-          ${stat("Blocks placed", num(p.blocksPlaced))}
-          ${stat("Blocks broken", num(p.blocksBroken))}
-          ${stat("Mob kills", num(p.mobKills))}
-          ${stat("Player kills", num(p.playerKills))}
-          ${stat("Deaths", num(p.deaths), "red")}
-          ${stat("Advancements", num(p.advancements))}
+          ${stat("Spielzeit", duration(p.playtime))}
+          ${stat("Aktive Zeit", duration(p.activeTime), "green")}
+          ${stat("Blöcke gesetzt", num(p.blocksPlaced))}
+          ${stat("Blöcke abgebaut", num(p.blocksBroken))}
+          ${stat("Mob-Kills", num(p.mobKills))}
+          ${stat("Spieler-Kills", num(p.playerKills))}
+          ${stat("Tode", num(p.deaths), "red")}
+          ${stat("Fortschritte", num(p.advancements))}
         </div>
       </section>
       <section class="card">
         <h2>Details</h2>
         <ul class="facts">
-          <li><span>First joined</span><span class="v">${esc(date(p.firstJoin))}</span></li>
-          <li><span>Last seen</span><span class="v">${p.online ? "now" : esc(ago(p.lastSeen))}</span></li>
-          <li><span>AFK time</span><span class="v">${duration(afkTime)}</span></li>
-          ${p.online && p.world ? `<li><span>World</span><span class="v">${esc(p.world)}</span></li>` : ""}
+          <li><span>Zuerst da</span><span class="v">${esc(date(p.firstJoin))}</span></li>
+          <li><span>Zuletzt gesehen</span><span class="v">${p.online ? "jetzt" : esc(ago(p.lastSeen))}</span></li>
+          <li><span>AFK-Zeit</span><span class="v">${duration(afkTime)}</span></li>
+          ${p.online && p.world ? `<li><span>Welt</span><span class="v">${esc(p.world)}</span></li>` : ""}
         </ul>
       </section>
     </div>`;
 }
 
 const ROLE_ORDER = { owner: 0, officer: 1, member: 2 };
+const ROLE_NAMES = { owner: "Besitzer", officer: "Offizier", member: "Mitglied" };
+const roleName = role => ROLE_NAMES[role] || role;
 
 function clansPage() {
-  const top = `<div class="page-head"><h1>Clans</h1><p>Make your own in game with <b>/clan create &lt;name&gt; &lt;tag&gt;</b>.</p></div>`;
-  if (!state.clans.length) return top + `<section class="card"><p class="empty">No clans yet.</p></section>`;
+  const top = `<div class="page-head"><h1>Clans</h1><p>Gründe im Spiel deinen eigenen mit <b>/clan create &lt;Name&gt; &lt;Tag&gt;</b>. Alle Befehle: <a href="#/info">Befehle</a>.</p></div>`;
+  if (!state.clans.length) return top + `<section class="card"><p class="empty">Noch keine Clans.</p></section>`;
   const byId = new Map(state.players.map(p => [p.uuid, p]));
   const clans = state.clans.map(c => {
     const members = c.members.map(m => ({ ...m, player: byId.get(m.uuid) })).filter(m => m.player);
@@ -288,17 +291,79 @@ function clansPage() {
   return top + `<div class="grid">${clans.map(c => `
     <section class="card">
       <div class="clan-top">${clanTag(c)}<span class="cname">${esc(c.name)}</span></div>
-      <p class="clan-sub">Since ${esc(date(c.created))}</p>
+      <p class="clan-sub">Seit ${esc(date(c.created))}</p>
       <div class="clan-figures">
-        <div><b>${c.members.length}</b><span>members</span></div>
+        <div><b>${c.members.length}</b><span>Mitglieder</span></div>
         <div><b>${c.online}</b><span>online</span></div>
-        <div><b>${duration(c.playtime)}</b><span>played</span></div>
-        <div><b>${num(c.blocks)}</b><span>blocks placed</span></div>
+        <div><b>${duration(c.playtime)}</b><span>gespielt</span></div>
+        <div><b>${num(c.blocks)}</b><span>Blöcke gesetzt</span></div>
       </div>
       <div class="members">${[...c.members].sort((a, b) => (ROLE_ORDER[a.role] ?? 3) - (ROLE_ORDER[b.role] ?? 3) || a.player.name.localeCompare(b.player.name)).map(m => `<a class="member" href="#/player/${esc(m.uuid)}">${head(m.uuid)}
-          ${esc(m.player.name)}${m.role !== "member" ? `<span class="role">${esc(m.role)}</span>` : ""}
+          ${esc(m.player.name)}${m.role !== "member" ? `<span class="role">${esc(roleName(m.role))}</span>` : ""}
           ${m.player.online ? `<span class="dot" title="online"></span>` : ""}</a>`).join("")}</div>
     </section>`).join("")}</div>`;
+}
+
+// ---------------------------------------------------------------- info page (commands)
+
+const COMMANDS = [
+  { title: "Clans", intro: "Gründe mit Freunden einen Clan. Euer Clan-Tag steht in der Tab-Liste vor eurem Namen, ihr habt einen eigenen Chat und eine gemeinsame Truhe. Geld gibt es keins.", list: [
+    ["/clan create <Name> <Tag>", "Gründet einen neuen Clan. Name: 3 bis 16 Zeichen (Buchstaben, Zahlen, _ oder -). Tag: 2 bis 5 Buchstaben oder Zahlen, zum Beispiel BFX.", "Alle"],
+    ["/clan invite <Spieler>", "Lädt einen Spieler in deinen Clan ein. Die Einladung gilt 5 Minuten.", "Besitzer, Offiziere"],
+    ["/clan accept", "Nimmt eine Clan-Einladung an.", "Alle"],
+    ["/clan deny", "Lehnt eine Clan-Einladung ab.", "Alle"],
+    ["/cc <Nachricht>", "Clan-Chat: nur die Mitglieder deines Clans sehen die Nachricht.", "Mitglieder"],
+    ["/clan chest", "Öffnet die gemeinsame Clan-Truhe. Sie ist so groß wie eine Doppeltruhe (54 Plätze) und alle Mitglieder sehen dieselbe Truhe.", "Mitglieder"],
+    ["/clan info [Clan]", "Zeigt die Mitglieder, das Gründungsdatum und ob Friendly Fire an ist. Ohne Namen: dein eigener Clan.", "Alle"],
+    ["/clan list", "Zeigt alle Clans auf dem Server.", "Alle"],
+    ["/clan leave", "Verlässt deinen Clan. Der Besitzer muss den Clan vorher abgeben oder auflösen.", "Mitglieder"],
+    ["/clan kick <Spieler>", "Wirft ein Mitglied aus dem Clan. Offiziere können nur normale Mitglieder rauswerfen.", "Besitzer, Offiziere"],
+    ["/clan promote <Spieler>", "Macht ein Mitglied zum Offizier.", "Besitzer"],
+    ["/clan demote <Spieler>", "Macht einen Offizier wieder zum normalen Mitglied.", "Besitzer"],
+    ["/clan transfer <Spieler>", "Gibt den Clan an ein anderes Mitglied ab. Du wirst dann Offizier.", "Besitzer"],
+    ["/clan rename <Name>", "Gibt dem Clan einen neuen Namen.", "Besitzer"],
+    ["/clan tag <Tag>", "Ändert den Clan-Tag.", "Besitzer"],
+    ["/clan color <Farbe>", "Ändert die Farbe des Clan-Tags, zum Beispiel gold, red oder aqua.", "Besitzer"],
+    ["/clan friendlyfire on|off", "Ob sich Clan-Mitglieder gegenseitig Schaden machen können. Standard: aus.", "Besitzer, Offiziere"],
+    ["/clan disband", "Löst den Clan für alle auf (mit /clan disband confirm bestätigen). Die Clan-Truhe muss dafür leer sein, damit nichts verloren geht.", "Besitzer"],
+  ]},
+  { title: "Mobs", intro: "Damit dein Haustier, dein Dorfbewohner oder dein Farmtier nicht einfach verschwindet.", list: [
+    ["/lockmob", "Schau einen Mob an (bis 6 Blöcke entfernt): er verschwindet nie mehr (despawnt nicht). Sonst ändert sich nichts, er kann weiter Schaden nehmen und sterben.", "Alle"],
+    ["/unlockmob", "Schau einen gesperrten Mob an: er kann wieder ganz normal verschwinden. Geht nur bei Mobs, die du selbst gesperrt hast.", "Alle"],
+  ]},
+  { title: "Statistiken", intro: "Alles, was du im Spiel siehst, steht auch hier auf der Webseite.", list: [
+    ["/stats", "Zeigt deine Spielzeit (und davon aktive Zeit), gesetzte und abgebaute Blöcke, getötete Mobs, Tode und Fortschritte. Auch als /playtime.", "Alle"],
+    ["/clyro", "Zeigt alle Befehle mit kurzer Erklärung im Chat. Auch als /cl.", "Alle"],
+  ]},
+  { title: "Admins", intro: "Nur für Admins (Operatoren) des Servers.", list: [
+    ["/clanadmin rename <Clan> <Name>", "Benennt jeden Clan um, zum Beispiel bei einem unpassenden Namen.", "Admins"],
+    ["/clanadmin tag <Clan> <Tag>", "Ändert den Tag jedes Clans.", "Admins"],
+    ["/clanadmin disband <Clan>", "Löst jeden Clan auf.", "Admins"],
+    ["/unlockall", "Entsperrt alle gesperrten Mobs in allen Welten. Mobs in Gebieten, in denen gerade niemand ist, werden entsperrt, sobald jemand in die Nähe kommt.", "Admins"],
+  ]},
+];
+
+function infoPage() {
+  const s = state.data.server || {};
+  const sections = COMMANDS.map(group => `
+    <section class="card">
+      <h2>${esc(group.title)}</h2>
+      <p class="info-intro">${esc(group.intro)}</p>
+      <dl class="commands">${group.list.map(([cmd, text, who]) => `
+        <div class="command"><dt><code>${esc(cmd)}</code><span class="who">${esc(who)}</span></dt><dd>${esc(text)}</dd></div>`).join("")}
+      </dl>
+    </section>`).join("");
+  return `
+    <div class="page-head"><h1>Befehle</h1><p>Alle Befehle auf dem Server. Im Spiel zeigt <b>/clyro</b> dieselbe Liste.${s.address ? ` Server-Adresse: <span class="join">${esc(s.address)}</span>` : ""}</p></div>
+    <section class="card">
+      <h2>Kurz erklärt</h2>
+      <ul class="facts">
+        <li><span>Wörter in &lt;spitzen Klammern&gt;</span><span class="v">musst du ausfüllen, ohne die Klammern</span></li>
+        <li><span>Wörter in [eckigen Klammern]</span><span class="v">kannst du weglassen</span></li>
+        <li><span>Spielzeit</span><span class="v">zählt immer, aktive Zeit nur, wenn du nicht AFK bist (5 Minuten nichts tun)</span></li>
+      </ul>
+    </section>
+    <div class="info-grid">${sections}</div>`;
 }
 
 // ---------------------------------------------------------------- events

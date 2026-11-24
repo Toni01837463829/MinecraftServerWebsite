@@ -1,0 +1,62 @@
+# Test setup on your own PC: a test database (like the MineHosting MySQL) and a test website
+# (like GitHub Pages). Nothing here touches the real server, database or website.
+#
+#   cd docker
+#   docker compose up
+#
+# Then open http://localhost:8080 . Stop with Ctrl+C. Delete everything (also the test data) with
+#   docker compose down -v
+#
+# The passwords below are only for this test database on your PC. Never use them for the real one.
+name: minecraft-website-test
+
+services:
+  db:
+    image: mariadb:11.4
+    environment:
+      MARIADB_DATABASE: minecraft
+      MARIADB_USER: minecraft
+      MARIADB_PASSWORD: test123
+      MARIADB_ROOT_PASSWORD: root123
+    # The event scheduler keeps the demo server "online" (see test-data.sql).
+    command: ["--event-scheduler=ON"]
+    ports:
+      # So a test Minecraft server on your PC can copy its stats here too (host 127.0.0.1, port 3306).
+      - "3306:3306"
+    volumes:
+      - ./test-data.sql:/docker-entrypoint-initdb.d/test-data.sql:ro
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+
+  website:
+    image: node:22-alpine
+    working_dir: /app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Same names as the GitHub secrets and variables of the real website.
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_NAME: minecraft
+      DB_USER: minecraft
+      DB_PASSWORD: test123
+      SERVER_NAME: Testserver
+      SERVER_ADDRESS: localhost
+      # GitHub updates every 10 minutes. Here it is every 30 seconds, so you see changes fast.
+      UPDATE_SECONDS: "30"
+    command: ["sh", "-c", "npm ci --omit=dev --no-audit --no-fund && node docker/test-website.mjs"]
+    ports:
+      - "8080:8080"
+    volumes:
+      - ..:/app
+      # node_modules stays inside Docker, so it doesn't mix with the one on your PC.
+      - node-modules:/app/node_modules
+
+volumes:
+  db-data:
+  node-modules:
