@@ -4,6 +4,7 @@
 #   cd docker
 #   docker compose up
 #
+# The database starts EMPTY. Your test Minecraft server fills it (see README.md, "Test everything on your PC").
 # Then open http://localhost:8080 . Stop with Ctrl+C. Delete everything (also the test data) with
 #   docker compose down -v
 #
@@ -18,13 +19,13 @@ services:
       MARIADB_USER: minecraft
       MARIADB_PASSWORD: test123
       MARIADB_ROOT_PASSWORD: root123
-    # The event scheduler keeps the demo server "online" (see test-data.sql).
+    # Only needed for the optional demo data (demo-data.sql).
     command: ["--event-scheduler=ON"]
     ports:
       # So a test Minecraft server on your PC can copy its stats here too (host 127.0.0.1, port 3306).
       - "3306:3306"
     volumes:
-      - ./test-data.sql:/docker-entrypoint-initdb.d/test-data.sql:ro
+      - ./tables.sql:/docker-entrypoint-initdb.d/tables.sql:ro
       - db-data:/var/lib/mysql
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
@@ -45,7 +46,7 @@ services:
       DB_NAME: minecraft
       DB_USER: minecraft
       DB_PASSWORD: test123
-      SERVER_NAME: Testserver
+      # The server name on the website comes from the motd of your test server.
       SERVER_ADDRESS: localhost
       # GitHub updates every 10 minutes. Here it is every 30 seconds, so you see changes fast.
       UPDATE_SECONDS: "30"

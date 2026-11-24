@@ -1,35 +1,10 @@
--- Test data for the Docker test database. Runs once, when the database is created.
--- The tables are the same ones the plugin creates on the real database (table prefix "mc_").
--- Start fresh with: docker compose down -v
+-- OPTIONAL made-up demo players and clans, only to look at the website without a Minecraft server.
+-- Not loaded automatically. Load them (while "docker compose up" is running) with:
+--   Get-Content demo-data.sql | docker compose exec -T db mariadb -uminecraft -ptest123 minecraft
+-- Remove them again with: docker compose down -v   (deletes ALL test data, also from your test server)
 
 SET @now = ROUND(UNIX_TIMESTAMP(NOW(3)) * 1000);
 SET @day = 86400000;
-
-CREATE TABLE IF NOT EXISTS mc_players (
-  uuid CHAR(36) NOT NULL PRIMARY KEY, name VARCHAR(32) NOT NULL,
-  first_join BIGINT NOT NULL, last_seen BIGINT NOT NULL,
-  playtime_seconds BIGINT NOT NULL DEFAULT 0, active_seconds BIGINT NOT NULL DEFAULT 0,
-  blocks_placed BIGINT NOT NULL DEFAULT 0, blocks_broken BIGINT NOT NULL DEFAULT 0,
-  deaths BIGINT NOT NULL DEFAULT 0, mob_kills BIGINT NOT NULL DEFAULT 0,
-  player_kills BIGINT NOT NULL DEFAULT 0, advancements BIGINT NOT NULL DEFAULT 0,
-  updated_at BIGINT NOT NULL DEFAULT 0
-) CHARACTER SET utf8mb4;
-CREATE TABLE IF NOT EXISTS mc_online (
-  uuid CHAR(36) NOT NULL PRIMARY KEY, name VARCHAR(32) NOT NULL,
-  afk TINYINT NOT NULL DEFAULT 0, world VARCHAR(64) NOT NULL DEFAULT '', updated_at BIGINT NOT NULL DEFAULT 0
-) CHARACTER SET utf8mb4;
-CREATE TABLE IF NOT EXISTS mc_clans (
-  id INT NOT NULL PRIMARY KEY, name VARCHAR(32) NOT NULL, tag VARCHAR(8) NOT NULL,
-  color VARCHAR(7) NOT NULL DEFAULT '#ffaa00', owner CHAR(36) NOT NULL, created BIGINT NOT NULL,
-  member_count INT NOT NULL DEFAULT 0, updated_at BIGINT NOT NULL DEFAULT 0
-) CHARACTER SET utf8mb4;
-CREATE TABLE IF NOT EXISTS mc_clan_members (
-  uuid CHAR(36) NOT NULL PRIMARY KEY, clan_id INT NOT NULL, role VARCHAR(16) NOT NULL
-) CHARACTER SET utf8mb4;
-CREATE TABLE IF NOT EXISTS mc_server (
-  id TINYINT NOT NULL PRIMARY KEY, motd VARCHAR(512) NOT NULL DEFAULT '', version VARCHAR(32) NOT NULL DEFAULT '',
-  max_players INT NOT NULL DEFAULT 0, online_count INT NOT NULL DEFAULT 0, updated_at BIGINT NOT NULL DEFAULT 0
-) CHARACTER SET utf8mb4;
 
 INSERT INTO mc_players VALUES
   ('11111111-1111-4111-8111-111111111111', 'Baumeisterin', @now - 30*@day, @now,          312000, 268000, 48210, 21004,  41,  930,  3, 61, @now),
@@ -57,8 +32,8 @@ INSERT INTO mc_online VALUES
 
 INSERT INTO mc_server VALUES (1, 'Testserver (Docker)', '26.3', 20, 3, @now);
 
--- The real plugin writes every 30 seconds. This keeps the demo server "online" the same way.
--- It stops as soon as a real (test) Minecraft server writes here, because that changes the motd.
+-- Keeps the demo server "online" (the real plugin writes every 30 seconds).
+-- It stops as soon as a real Minecraft server writes here, because that changes the motd.
 CREATE EVENT IF NOT EXISTS demo_server_heartbeat ON SCHEDULE EVERY 30 SECOND DO
   UPDATE mc_server SET updated_at = ROUND(UNIX_TIMESTAMP(NOW(3)) * 1000)
   WHERE id = 1 AND motd = 'Testserver (Docker)';

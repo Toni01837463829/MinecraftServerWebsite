@@ -22,7 +22,7 @@ There is **no money** on this website, and the contents of the clan chests are n
 
 You can try the website with a **test database** on your own PC, before you set up the real one.
 It works like the real thing: a MySQL/MariaDB database (like the one at MineHosting) and a website that updates itself (like GitHub Pages).
-It already has some made-up players and clans, so you see something right away.
+The test database starts **empty**. Your test Minecraft server on your PC fills it with your real data.
 
 1. Install **Docker Desktop**: https://www.docker.com/products/docker-desktop/ and start it.
 2. Open the folder of this repository, then the folder `docker`. Click into the address bar, type `powershell` and press **Enter**.
@@ -32,26 +32,36 @@ It already has some made-up players and clans, so you see something right away.
    docker compose up
    ```
 
-   The first time it downloads a few things (1–3 minutes).
-4. Open **http://localhost:8080** in your browser. The test website updates every 30 seconds.
-5. Stop it with **Ctrl+C** in the PowerShell window.
-   To delete the test data too (start fresh next time): `docker compose down -v`
+   The first time it downloads a few things (1–3 minutes). Leave this window open.
+4. Put this into `plugins/ClyroLandeszentrale/config.yml` of your **test** Minecraft server on your PC (for example `D:\repos\MinecraftPlugin\server`), then restart that server:
 
-**Test with a real Minecraft server on your PC (optional):** start a test Paper server on your PC (for example `.\gradlew runServer` in the plugin repository) and put this into its `plugins/ClyroLandeszentrale/config.yml`:
+   ```yaml
+   database:
+     enabled: true
+     host: "127.0.0.1"
+     port: 3306
+     name: "minecraft"
+     user: "minecraft"
+     password: "test123"
+     table-prefix: "mc_"
+     use-ssl: false
+     sync-seconds: 30
+   ```
 
-```yaml
-database:
-  enabled: true
-  host: "127.0.0.1"
-  port: 3306
-  name: "minecraft"
-  user: "minecraft"
-  password: "test123"
-```
-
-Then join the server: after about 30 seconds you show up on http://localhost:8080 .
+   The server console must say `Connected to the database ... Stats are copied every 30 s for the website.`
+5. Join the server and open **http://localhost:8080**. After about 30–60 seconds you see yourself there. The test website updates every 30 seconds.
+6. Stop it with **Ctrl+C** in the PowerShell window. Your test data stays for next time.
+   To delete all test data and start empty: `docker compose down -v`
 
 These test passwords are only for the test database on your PC. Never use them for the real database.
+
+**Only want to look at the website, without a Minecraft server?** While `docker compose up` runs, open a second PowerShell in the `docker` folder and type:
+
+```
+Get-Content demo-data.sql | docker compose exec -T db mariadb -uminecraft -ptest123 minecraft
+```
+
+This adds made-up players and clans. Remove them again with `docker compose down -v`.
 
 > **Supabase?** The real website does **not** use Supabase. The plugin copies the stats into the **MySQL database at MineHosting**, and GitHub Pages shows the website. The Docker test copies exactly that.
 
@@ -171,7 +181,7 @@ GitHub pauses timed workflows in public repositories when nothing changed in the
 - `site/` – the website itself (plain HTML, CSS and JavaScript, no build tools). It only reads `data/stats.json`.
 - `scripts/export.mjs` – reads the database (tables `mc_players`, `mc_online`, `mc_clans`, `mc_clan_members`, `mc_server`) and writes `_site/` = `site/` + `data/stats.json`.
 - `.github/workflows/deploy.yml` – runs the export every 10 minutes and publishes `_site/` on GitHub Pages.
-- `docker/` – the test setup: `docker-compose.yml` (MariaDB + test website), `test-data.sql` (tables and made-up players), `test-website.mjs` (runs the export every 30 s and serves `_site/` on port 8080).
+- `docker/` – the test setup: `docker-compose.yml` (MariaDB + test website), `tables.sql` (the empty tables), `demo-data.sql` (optional made-up players), `test-website.mjs` (runs the export every 30 s and serves `_site/` on port 8080).
 
 Optional repository **variables**: `DB_TABLE_PREFIX` (default `mc_`, must match `database.table-prefix` in the plugin), `DB_SSL` (`true` for an encrypted database connection).
 
