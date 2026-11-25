@@ -6,13 +6,16 @@
 
 create temp table t as select (extract(epoch from now()) * 1000)::bigint as now, 86400000::bigint as day;
 
-insert into players select v.* from t, lateral (values
-  ('11111111-1111-4111-8111-111111111111'::uuid, 'Baumeisterin', t.now - 30*t.day, t.now,          312000, 268000, 48210, 21004,  41,  930,  3, 61, t.now),
-  ('22222222-2222-4222-8222-222222222222'::uuid, 'Steinbrecher', t.now - 28*t.day, t.now,          254000, 231000,  9120, 88310,  67, 1840,  8, 54, t.now),
-  ('33333333-3333-4333-8333-333333333333'::uuid, 'Farmerin',     t.now - 21*t.day, t.now,          131000, 102000, 15540,  9020,  12,  210,  0, 33, t.now),
-  ('44444444-4444-4444-8444-444444444444'::uuid, 'Nachtwache',   t.now - 14*t.day, t.now - 7200000, 98000,  90100,  3020,  7710,  29, 2210, 14, 40, t.now),
-  ('55555555-5555-4555-8555-555555555555'::uuid, 'Entdecker',    t.now - 9*t.day,  t.now - 3*t.day, 45000,  39000,  1210,  5230,  18,  340,  1, 47, t.now),
-  ('66666666-6666-4666-8666-666666666666'::uuid, 'Neuling',      t.now - 1*t.day,  t.now - 18000000, 3600,  3100,   140,   420,   4,   12,  0,  6, t.now)
+insert into players (uuid, name, first_join, last_seen, playtime_seconds, active_seconds, blocks_placed, blocks_broken,
+  deaths, mob_kills, player_kills, advancements, updated_at, longest_session_seconds, sessions, distance_cm, fish_caught,
+  animals_bred, villager_trades, items_crafted, diamonds_mined)
+select v.* from t, lateral (values
+  ('11111111-1111-4111-8111-111111111111'::uuid, 'Baumeisterin', t.now - 30*t.day, t.now,          312000, 268000, 48210, 21004,  41,  930,  3, 61, t.now, 21400, 96, 21400000, 37, 58, 120, 5230, 41),
+  ('22222222-2222-4222-8222-222222222222'::uuid, 'Steinbrecher', t.now - 28*t.day, t.now,          254000, 231000,  9120, 88310,  67, 1840,  8, 54, t.now, 18800, 71, 15800000, 4, 12, 31, 2104, 187),
+  ('33333333-3333-4333-8333-333333333333'::uuid, 'Farmerin',     t.now - 21*t.day, t.now,          131000, 102000, 15540,  9020,  12,  210,  0, 33, t.now, 9200, 64, 8900000, 212, 431, 77, 3810, 6),
+  ('44444444-4444-4444-8444-444444444444'::uuid, 'Nachtwache',   t.now - 14*t.day, t.now - 7200000, 98000,  90100,  3020,  7710,  29, 2210, 14, 40, t.now, 14400, 30, 17300000, 9, 3, 12, 690, 52),
+  ('55555555-5555-4555-8555-555555555555'::uuid, 'Entdecker',    t.now - 9*t.day,  t.now - 3*t.day, 45000,  39000,  1210,  5230,  18,  340,  1, 47, t.now, 7700, 22, 24900000, 61, 7, 45, 440, 23),
+  ('66666666-6666-4666-8666-666666666666'::uuid, 'Neuling',      t.now - 1*t.day,  t.now - 18000000, 3600,  3100,   140,   420,   4,   12,  0,  6, t.now, 2100, 3, 2400000, 0, 0, 0, 38, 0)
 ) v on conflict do nothing;
 
 insert into clans select v.* from t, lateral (values

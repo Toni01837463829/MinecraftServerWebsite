@@ -25,6 +25,16 @@ create table if not exists public.players (
   updated_at bigint not null default 0
 );
 
+-- More stats (plugin version 2.1). Added like this, so running this file again on an older database adds them.
+alter table public.players add column if not exists longest_session_seconds bigint not null default 0;
+alter table public.players add column if not exists sessions bigint not null default 0;
+alter table public.players add column if not exists distance_cm bigint not null default 0;
+alter table public.players add column if not exists fish_caught bigint not null default 0;
+alter table public.players add column if not exists animals_bred bigint not null default 0;
+alter table public.players add column if not exists villager_trades bigint not null default 0;
+alter table public.players add column if not exists items_crafted bigint not null default 0;
+alter table public.players add column if not exists diamonds_mined bigint not null default 0;
+
 -- Who is online right now.
 create table if not exists public.online_players (
   uuid uuid primary key,

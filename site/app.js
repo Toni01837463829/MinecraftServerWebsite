@@ -19,6 +19,29 @@ function duration(seconds) {
   return h > 0 ? `${h} h ${m} min` : `${m} min`;
 }
 
+/** 1234567 cm becomes "12,3 km", 85000 cm becomes "850 m". */
+function distance(cm) {
+  const m = Math.floor((cm || 0) / 100);
+  if (m < 1000) return `${m} m`;
+  const km = m / 1000;
+  return `${km.toLocaleString("de-DE", { maximumFractionDigits: km < 100 ? 1 : 0 })} km`;
+}
+
+/** Kills per death, like "3,4". Without deaths there is nothing to divide by. */
+function killsPerDeath(p) {
+  const kills = p.mobKills + p.playerKills;
+  if (!p.deaths) return "–";
+  return (kills / p.deaths).toLocaleString("de-DE", { maximumFractionDigits: 1 });
+}
+
+/**
+ * For the big numbers in the tiles: "1 h 59 min" becomes 1 h 59 min with small units. Each number stays
+ * together with its unit, but the parts may go onto two lines when the tile is too narrow.
+ */
+function units(text) {
+  return esc(text).replace(/(\S+) (\S+)/g, '<span class="nb">$1<small> $2</small></span>');
+}
+
 function ago(millis) {
   const s = Math.max(0, (Date.now() - millis) / 1000);
   if (s < 60) return "gerade eben";
@@ -65,8 +88,8 @@ function statusPill(p) {
   return `<span class="pill offline">${esc(ago(p.lastSeen))}</span>`;
 }
 
-function stat(label, value, color = "") {
-  return `<div class="stat"><div class="label">${esc(label)}</div><div class="value ${color}">${value}</div></div>`;
+function stat(label, value, color = "", title = "") {
+  return `<div class="stat"${title ? ` title="${esc(title)}"` : ""}><div class="label">${esc(label)}</div><div class="value ${color}">${value}</div></div>`;
 }
 
 // ---------------------------------------------------------------- data
@@ -148,6 +171,15 @@ function build({ players, online, servers, clans, clanMembers }) {
         mobKills: Number(r.mob_kills),
         playerKills: Number(r.player_kills),
         advancements: Number(r.advancements),
+        // Newer columns: 0 if the database doesn't have them yet (schema.sql not run again).
+        longestSession: Number(r.longest_session_seconds || 0),
+        sessions: Number(r.sessions || 0),
+        distance: Number(r.distance_cm || 0),
+        fish: Number(r.fish_caught || 0),
+        bred: Number(r.animals_bred || 0),
+        trades: Number(r.villager_trades || 0),
+        crafted: Number(r.items_crafted || 0),
+        diamonds: Number(r.diamonds_mined || 0),
         online: !!o,
         afk: !!o && !!o.afk,
         world: o ? o.world : "",
@@ -260,12 +292,14 @@ function homePage() {
   const join = s.address ? `<p>Spiel mit: <span class="join">${esc(s.address)}</span></p>` : `<p>Was gerade auf dem Server los ist.</p>`;
   return `
     <div class="page-head"><h1>Übersicht</h1>${join}</div>
-    <div class="stats">
+    <div class="stats home">
       ${stat("Online", `${s.up ? online.length : 0}<small> / ${s.maxPlayers || 0}</small>`, "green")}
       ${stat("Spieler", num(players.length))}
       ${stat("Clans", num(state.clans.length))}
-      ${stat("Gespielte Zeit", duration(sum("playtime")))}
+      ${stat("Gespielte Zeit", units(duration(sum("playtime"))))}
       ${stat("Blöcke gesetzt", num(sum("blocksPlaced")))}
+      ${stat("Zurückgelegt", units(distance(sum("distance"))), "", "Zu Fuß, schwimmend, mit Elytra, Boot, Pferd und mehr")}
+      ${stat("Diamanten abgebaut", num(sum("diamonds")), "blue")}
       ${stat("Tode", num(sum("deaths")), "red")}
     </div>
     <div class="grid">
@@ -278,6 +312,9 @@ function homePage() {
       ${board("Top-Miner", "blocksBroken", num)}
       ${board("Monsterjäger", "mobKills", num)}
       ${board("Meiste Fortschritte", "advancements", num)}
+      ${board("Weltenbummler", "distance", distance)}
+      ${board("Diamantenjäger", "diamonds", num)}
+      ${board("Anglerkönig", "fish", num)}
     </div>`;
 }
 
@@ -290,6 +327,8 @@ const columns = [
   { key: "blocksBroken", label: "Abgebaut", cell: p => num(p.blocksBroken), num: true },
   { key: "mobKills", label: "Mob-Kills", cell: p => num(p.mobKills), num: true },
   { key: "deaths", label: "Tode", cell: p => num(p.deaths), num: true },
+  { key: "distance", label: "Strecke", cell: p => distance(p.distance), num: true },
+  { key: "diamonds", label: "Diamanten", cell: p => num(p.diamonds), num: true },
   { key: "advancements", label: "Fortschritte", cell: p => num(p.advancements), num: true },
 ];
 
@@ -340,34 +379,44 @@ function playerPage(uuid) {
             ${statusPill(p)}
             ${p.clan ? `<a href="#/clans">${clanTag(p.clan)}${esc(p.clan.name)}${p.clanRole && p.clanRole !== "member" ? ` · ${esc(roleName(p.clanRole))}` : ""}</a>` : ""}
             <span>Dabei seit ${esc(date(p.firstJoin))}</span>
+            ${p.online && p.world ? `<span>Welt: ${esc(p.world)}</span>` : ""}
           </div>
         </div>
       </div>
     </section>
-    <div class="split">
-      <section class="card">
-        <h2>Statistiken</h2>
-        <div class="stats flat">
-          ${stat("Spielzeit", duration(p.playtime))}
-          ${stat("Aktive Zeit", duration(p.activeTime), "green")}
-          ${stat("Blöcke gesetzt", num(p.blocksPlaced))}
-          ${stat("Blöcke abgebaut", num(p.blocksBroken))}
-          ${stat("Mob-Kills", num(p.mobKills))}
-          ${stat("Spieler-Kills", num(p.playerKills))}
-          ${stat("Tode", num(p.deaths), "red")}
-          ${stat("Fortschritte", num(p.advancements))}
-        </div>
-      </section>
-      <section class="card">
-        <h2>Details</h2>
-        <ul class="facts">
-          <li><span>Zuerst da</span><span class="v">${esc(date(p.firstJoin))}</span></li>
-          <li><span>Zuletzt gesehen</span><span class="v">${p.online ? "jetzt" : esc(ago(p.lastSeen))}</span></li>
-          <li><span>AFK-Zeit</span><span class="v">${duration(afkTime)}</span></li>
-          ${p.online && p.world ? `<li><span>Welt</span><span class="v">${esc(p.world)}</span></li>` : ""}
-        </ul>
-      </section>
-    </div>`;
+    <section class="card">
+      <h2>Statistiken</h2>
+      ${statGroup("Zeit", [
+        stat("Spielzeit", units(duration(p.playtime))),
+        stat("Aktive Zeit", units(duration(p.activeTime)), "green", "Spielzeit ohne AFK"),
+        stat("AFK-Zeit", units(duration(afkTime)), "muted"),
+        stat("Längste Sitzung", units(duration(p.longestSession)), "", "Am längsten am Stück online"),
+        stat("Logins", num(p.sessions)),
+      ])}
+      ${statGroup("Bauen & Abbauen", [
+        stat("Blöcke gesetzt", num(p.blocksPlaced)),
+        stat("Blöcke abgebaut", num(p.blocksBroken)),
+        stat("Diamanten abgebaut", num(p.diamonds), "blue"),
+        stat("Items gecraftet", num(p.crafted)),
+      ])}
+      ${statGroup("Kampf", [
+        stat("Mob-Kills", num(p.mobKills)),
+        stat("Spieler-Kills", num(p.playerKills)),
+        stat("Tode", num(p.deaths), "red"),
+        stat("Kills pro Tod", esc(killsPerDeath(p)), "", p.deaths ? "Mob- und Spieler-Kills geteilt durch Tode" : "Noch nie gestorben"),
+      ])}
+      ${statGroup("Abenteuer", [
+        stat("Zurückgelegt", units(distance(p.distance)), "", "Zu Fuß, schwimmend, mit Elytra, Boot, Pferd und mehr"),
+        stat("Fische gefangen", num(p.fish)),
+        stat("Tiere gezüchtet", num(p.bred)),
+        stat("Dorfbewohner-Handel", num(p.trades)),
+        stat("Fortschritte", num(p.advancements), "gold"),
+      ])}
+    </section>`;
+}
+
+function statGroup(title, tiles) {
+  return `<h3 class="group">${esc(title)}</h3><div class="stats flat">${tiles.join("")}</div>`;
 }
 
 const ROLE_ORDER = { owner: 0, officer: 1, member: 2 };
@@ -384,18 +433,23 @@ function clansPage() {
       ...c, members,
       playtime: members.reduce((t, m) => t + m.player.playtime, 0),
       blocks: members.reduce((t, m) => t + m.player.blocksPlaced, 0),
+      mobKills: members.reduce((t, m) => t + m.player.mobKills, 0),
+      distance: members.reduce((t, m) => t + m.player.distance, 0),
+      diamonds: members.reduce((t, m) => t + m.player.diamonds, 0),
       online: members.filter(m => m.player.online).length,
     };
   }).sort((a, b) => b.members.length - a.members.length || b.playtime - a.playtime);
   return top + `<div class="grid">${clans.map(c => `
     <section class="card">
       <div class="clan-top">${clanTag(c)}<span class="cname">${esc(c.name)}</span></div>
-      <p class="clan-sub">Seit ${esc(date(c.created))}</p>
+      <p class="clan-sub">Seit ${esc(date(c.created))}${c.online ? ` · <span class="on">${c.online} online</span>` : ""}</p>
       <div class="clan-figures">
         <div><b>${c.members.length}</b><span>Mitglieder</span></div>
-        <div><b>${c.online}</b><span>online</span></div>
         <div><b>${duration(c.playtime)}</b><span>gespielt</span></div>
         <div><b>${num(c.blocks)}</b><span>Blöcke gesetzt</span></div>
+        <div><b>${num(c.mobKills)}</b><span>Mob-Kills</span></div>
+        <div><b>${num(c.diamonds)}</b><span>Diamanten</span></div>
+        <div><b>${distance(c.distance)}</b><span>zurückgelegt</span></div>
       </div>
       <div class="members">${[...c.members].sort((a, b) => (ROLE_ORDER[a.role] ?? 3) - (ROLE_ORDER[b.role] ?? 3) || a.player.name.localeCompare(b.player.name)).map(m => `<a class="member" href="#/player/${esc(m.uuid)}">${head(m.uuid)}
           ${esc(m.player.name)}${m.role !== "member" ? `<span class="role">${esc(roleName(m.role))}</span>` : ""}
@@ -431,7 +485,7 @@ const COMMANDS = [
     ["/unlockmob", "Schau einen gesperrten Mob an: er kann wieder ganz normal verschwinden. Geht nur bei Mobs, die du selbst gesperrt hast (Admins dürfen alle entsperren).", "Alle"],
   ]},
   { title: "Statistiken", intro: "Alles, was du im Spiel siehst, steht auch hier auf der Webseite.", list: [
-    ["/stats", "Zeigt deine Spielzeit (und davon aktive Zeit), gesetzte und abgebaute Blöcke, getötete Mobs, Tode und Fortschritte. Auch als /playtime.", "Alle"],
+    ["/stats", "Zeigt deine Spielzeit (und davon aktive Zeit), längste Sitzung, Logins, gesetzte und abgebaute Blöcke, gecraftete Items, abgebaute Diamanten, getötete Mobs, Tode, Fortschritte, zurückgelegte Strecke, gefangene Fische, gezüchtete Tiere und Handel mit Dorfbewohnern. Auch als /playtime.", "Alle"],
     ["/clyro", "Zeigt alle Befehle mit kurzer Erklärung im Chat. Auch als /cl.", "Alle"],
   ]},
   { title: "Admins", intro: "Nur für Admins (Operatoren) des Servers.", list: [
