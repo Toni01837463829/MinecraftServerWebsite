@@ -323,13 +323,13 @@ const COMMANDS = [
     ["/clan transfer <Spieler>", "Gibt den Clan an ein anderes Mitglied ab. Du wirst dann Offizier.", "Besitzer"],
     ["/clan rename <Name>", "Gibt dem Clan einen neuen Namen.", "Besitzer"],
     ["/clan tag <Tag>", "Ändert den Clan-Tag.", "Besitzer"],
-    ["/clan color <Farbe>", "Ändert die Farbe des Clan-Tags, zum Beispiel gold, red oder aqua.", "Besitzer"],
+    ["/clan color <Farbe>", "Ändert die Farbe des Clan-Tags. Farben: gold, gelb, rot, dunkelrot, gruen, dunkelgruen, tuerkis, dunkeltuerkis, blau, dunkelblau, pink, lila, weiss, grau, dunkelgrau, schwarz.", "Besitzer"],
     ["/clan friendlyfire on|off", "Ob sich Clan-Mitglieder gegenseitig Schaden machen können. Standard: aus.", "Besitzer, Offiziere"],
     ["/clan disband", "Löst den Clan für alle auf (mit /clan disband confirm bestätigen). Die Clan-Truhe muss dafür leer sein, damit nichts verloren geht.", "Besitzer"],
   ]},
   { title: "Mobs", intro: "Damit dein Haustier, dein Dorfbewohner oder dein Farmtier nicht einfach verschwindet.", list: [
     ["/lockmob", "Schau einen Mob an (bis 6 Blöcke entfernt): er verschwindet nie mehr (despawnt nicht). Sonst ändert sich nichts, er kann weiter Schaden nehmen und sterben.", "Alle"],
-    ["/unlockmob", "Schau einen gesperrten Mob an: er kann wieder ganz normal verschwinden. Geht nur bei Mobs, die du selbst gesperrt hast.", "Alle"],
+    ["/unlockmob", "Schau einen gesperrten Mob an: er kann wieder ganz normal verschwinden. Geht nur bei Mobs, die du selbst gesperrt hast (Admins dürfen alle entsperren).", "Alle"],
   ]},
   { title: "Statistiken", intro: "Alles, was du im Spiel siehst, steht auch hier auf der Webseite.", list: [
     ["/stats", "Zeigt deine Spielzeit (und davon aktive Zeit), gesetzte und abgebaute Blöcke, getötete Mobs, Tode und Fortschritte. Auch als /playtime.", "Alle"],
@@ -339,7 +339,7 @@ const COMMANDS = [
     ["/clanadmin rename <Clan> <Name>", "Benennt jeden Clan um, zum Beispiel bei einem unpassenden Namen.", "Admins"],
     ["/clanadmin tag <Clan> <Tag>", "Ändert den Tag jedes Clans.", "Admins"],
     ["/clanadmin disband <Clan>", "Löst jeden Clan auf.", "Admins"],
-    ["/unlockall", "Entsperrt alle gesperrten Mobs in allen Welten. Mobs in Gebieten, in denen gerade niemand ist, werden entsperrt, sobald jemand in die Nähe kommt.", "Admins"],
+    ["/unlockallmobs", "Entsperrt alle gesperrten Mobs in allen Welten (kurz: /unlockall). Mobs in Gebieten, in denen gerade niemand ist, werden entsperrt, sobald jemand in die Nähe kommt.", "Admins"],
   ]},
 ];
 
