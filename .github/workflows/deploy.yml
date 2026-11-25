@@ -1,7 +1,7 @@
 # Publishes the website on GitHub Pages, after every change in this repository and when you click
 # "Run workflow". The stats are NOT part of this: the page reads them live from Supabase.
 #
-# It writes config.js from this repository's VARIABLES (Settings > Secrets and variables > Actions > Variables):
+# It writes config.js from this repository's variables or secrets (Settings > Secrets and variables > Actions):
 #   SUPABASE_URL              like https://abcd.supabase.co
 #   SUPABASE_PUBLISHABLE_KEY  the publishable key (starts with sb_publishable_). It can only read, so it may be public.
 #   SERVER_NAME, SERVER_ADDRESS  optional, shown on the website
@@ -35,8 +35,9 @@ jobs:
 
       - name: Write the website with config.js
         env:
-          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
-          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+          # Works as a secret or as a variable. Either way it ends up in config.js, which every visitor can read.
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY || vars.SUPABASE_PUBLISHABLE_KEY }}
           SERVER_NAME: ${{ vars.SERVER_NAME }}
           SERVER_ADDRESS: ${{ vars.SERVER_ADDRESS }}
         run: |

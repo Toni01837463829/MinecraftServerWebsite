@@ -135,7 +135,7 @@ The game always keeps working, even if Supabase doesn't. Stats are saved on the 
 
 1. Open https://github.com/Toni01837463829/MinecraftServerWebsite → **Settings**.
 2. Make the repository **public** (needed for free GitHub Pages): at the very bottom, **Danger Zone** → **Change visibility** → **Change to public**. Nothing secret is in this repository.
-3. On the left, click **Secrets and variables** → **Actions**, then the tab **Variables** (not Secrets!) → **New repository variable**. Add:
+3. On the left, click **Secrets and variables** → **Actions**, then the tab **Variables** → **New repository variable** (the tab **Secrets** works too, if you prefer). Add:
 
    | Name (copy it exactly) | Value |
    |---|---|
@@ -145,6 +145,8 @@ The game always keeps working, even if Supabase doesn't. Stats are saved on the 
    | `SERVER_ADDRESS` (optional) | e.g. `play.yourserver.net`, shown as "Spiel mit: ..." |
 
    No spaces before or after the values.
+
+   Why the publishable key may be public: the website runs in the visitor's browser, so the browser must get this key; anyone can see it in the page's `config.js`, no matter where you store it in GitHub. That's how Supabase designed it: with this key, the tables can only be **read** (Row Level Security in `schema.sql`), never changed. The **secret** key is the one that must stay hidden, and it's only on your Minecraft server.
 4. On the left, click **Pages**. Under **Build and deployment → Source**, choose **GitHub Actions**.
 5. Click the tab **Actions** (top). If GitHub asks, click **I understand my workflows, go ahead and enable them**.
    On the left click **Update website**, on the right **Run workflow** → **Run workflow**.
