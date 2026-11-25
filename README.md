@@ -1,6 +1,6 @@
 # Minecraft Server Website
 
-The stats website for our Minecraft server (MineHosting). It shows:
+The stats website for our Minecraft server (MineHosting). It reads the stats live from **Supabase** and shows:
 
 - who is **online** right now (and who is AFK),
 - **top lists**: most playtime, top builders, top miners, monster hunters, most advancements,
@@ -18,11 +18,11 @@ There is **no money** on this website, and the contents of the clan chests are n
 
 ---
 
-## Test everything on your PC first (Docker)
+## Test everything on your PC (Docker)
 
-You can try the website with a **test database** on your own PC, before you set up the real one.
-It works like the real thing: a MySQL/MariaDB database (like the one at MineHosting) and a website that updates itself (like GitHub Pages).
-The test database starts **empty**. Your test Minecraft server on your PC fills it with your real data.
+You can try everything on your own PC first. The Docker test works like the real thing:
+a Postgres database with the same REST API as Supabase, and the website like on GitHub Pages.
+It starts **empty**; your test Minecraft server on your PC fills it with your real data.
 
 1. Install **Docker Desktop**: https://www.docker.com/products/docker-desktop/ and start it.
 2. Open the folder of this repository, then the folder `docker`. Click into the address bar, type `powershell` and press **Enter**.
@@ -33,164 +33,152 @@ The test database starts **empty**. Your test Minecraft server on your PC fills 
    ```
 
    The first time it downloads a few things (1–3 minutes). Leave this window open.
-4. Put this into `plugins/ClyroLandeszentrale/config.yml` of your **test** Minecraft server on your PC (for example `D:\repos\MinecraftPlugin\server`), then restart that server:
+4. Put this into `plugins/ClyroLandeszentrale/config.yml` of your **test** Minecraft server
+   (for example `D:\repos\MinecraftPlugin\server\plugins\ClyroLandeszentrale\config.yml`, **not** the one in `src`), then restart that server:
 
    ```yaml
-   database:
+   supabase:
      enabled: true
-     host: "127.0.0.1"
-     port: 3306
-     name: "minecraft"
-     user: "minecraft"
-     password: "test123"
-     table-prefix: "mc_"
-     use-ssl: false
+     url: "http://127.0.0.1:8080"
+     secret-key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoibG9jYWwtZG9ja2VyLXRlc3QifQ.IvG1-sTkHzoKDzHLlNiwctsvuiJWESlJlfR0wRYoVLQ"
      sync-seconds: 30
    ```
 
-   The server console must say `Connected to the database ... Stats are copied every 30 s for the website.`
-5. Join the server and open **http://localhost:8080**. After about 30–60 seconds you see yourself there. The test website updates every 30 seconds.
+   This test key only works for the Docker test on your PC. The console must say
+   `Connected to Supabase (http://127.0.0.1:8080). Stats are copied every 30 s for the website.`
+5. Join the server and open **http://localhost:8080**. After about 30 seconds you see yourself there.
 6. Stop it with **Ctrl+C** in the PowerShell window. Your test data stays for next time.
    To delete all test data and start empty: `docker compose down -v`
-
-These test passwords are only for the test database on your PC. Never use them for the real database.
 
 **Only want to look at the website, without a Minecraft server?** While `docker compose up` runs, open a second PowerShell in the `docker` folder and type:
 
 ```
-Get-Content demo-data.sql | docker compose exec -T db mariadb -uminecraft -ptest123 minecraft
+Get-Content demo-data.sql | docker compose exec -T db psql -U postgres
 ```
 
 This adds made-up players and clans. Remove them again with `docker compose down -v`.
 
-> **Supabase?** The real website does **not** use Supabase. The plugin copies the stats into the **MySQL database at MineHosting**, and GitHub Pages shows the website. The Docker test copies exactly that.
-
----
-
-## How it works (short)
-
-```
-Minecraft server (MineHosting)          GitHub (every 10 minutes)                 Website (GitHub Pages)
-plugin "Clyro" ── copies stats ──▶ MySQL database ──▶ reads the stats ──▶ builds the page ──▶ everyone can see it
-                                         ▲
-                                         └── uses the secrets DB_HOST, DB_USER, DB_PASSWORD ...
-```
-
-1. The Minecraft plugin (repository **MinecraftPlugin**, branch **MineHosting**) copies the player stats and clans into a MySQL database every 30 seconds.
-2. Every 10 minutes, GitHub runs the workflow **"Update website"**. It logs in to the database with the **secrets** you saved in this repository, reads the stats and builds the website.
-3. GitHub Pages shows the website.
-
-🔒 The database password is **only** in the GitHub secrets. It is **never** in the website, and nobody can see it — not even on the public repository page.
+**Coming from the old MySQL test?** Run `docker compose down -v` once in the `docker` folder before `docker compose up`, so the old MariaDB data is removed.
 
 ---
 
 ## Setup (step by step)
 
-Do the plugin and database setup first (README of the **MinecraftPlugin** repository, branch **MineHosting**, Parts 1–5).
-You need these 5 values from your MineHosting database (Part 4 there):
+You need: your Supabase project, your Minecraft server (MineHosting panel) and this GitHub repository.
+It takes about 15 minutes.
 
-- **HOST** (for example `db1.minehosting.de`, without `:3306`)
-- **PORT** (usually `3306`)
-- **DATABASE NAME**
-- **USER**
-- **PASSWORD**
+```
+Minecraft server ── secret key ──▶ Supabase ◀── publishable key (read only) ── Website (GitHub Pages)
+```
 
-### Step 1 – Make this repository public
+- The **plugin** writes the stats into Supabase with the **secret key**. Only your server knows it.
+- The **website** reads them with the **publishable key**. That key can only *read*, so it may be public.
 
-GitHub Pages is free for **public** repositories. (For private ones you need a paid GitHub plan.)
-Public means: everyone can see the website code. The **secrets stay secret**.
+### Step 1 – Make the tables in Supabase
 
-1. Open https://github.com/Toni01837463829/MinecraftServerWebsite
-2. Click **Settings** (the gear ⚙️ at the top right of the repository).
-3. Scroll all the way down to **"Danger Zone"**.
-4. Click **Change visibility** → **Change to public** and confirm.
+1. Open your project on https://supabase.com/dashboard.
+2. On the left, click **SQL Editor**.
+3. Open the file [`supabase/schema.sql`](supabase/schema.sql) of this repository, copy **all** of it and paste it into the editor.
+4. Click **Run** (bottom right). It should say **Success. No rows returned**.
+5. Check: on the left, click **Table Editor**. You see 5 tables: `players`, `online_players`, `clans`, `clan_members`, `server_status`. They are empty for now.
 
-### Step 2 – Add the secrets
+Running the file again later is safe. It never deletes data.
 
-1. In **Settings**, on the left side, click **Secrets and variables** → **Actions**.
-2. You are on the tab **Secrets**. Click the green button **New repository secret**.
-3. **Name:** `DB_HOST` – **Secret:** your HOST → click **Add secret**.
-4. Do the same for the other 4 secrets:
+### Step 2 – Copy the address and the two keys
 
-   | Name (copy it exactly) | Secret (the value) |
-   |---|---|
-   | `DB_HOST` | HOST, e.g. `db1.minehosting.de` |
-   | `DB_PORT` | PORT, e.g. `3306` |
-   | `DB_NAME` | DATABASE NAME |
-   | `DB_USER` | USER |
-   | `DB_PASSWORD` | PASSWORD |
+1. On the left, click **Project Settings** (the gear ⚙️ at the bottom).
+2. Click **Data API**. Copy the **Project URL**, for example `https://abcd.supabase.co`. This is your **URL**.
+   (On the same page, the Data API must be switched **on**.)
+3. Click **API Keys**. If you see no keys there, click **Create new API keys**.
+   - **Publishable key** (starts with `sb_publishable_`): copy it. It goes to **GitHub** (Step 4).
+   - **Secret key** (starts with `sb_secret_`): click the eye 👁 or the copy button. It goes **only** into the plugin's `config.yml` (Step 3).
 
-   The names must be written **exactly** like this (big letters, with `_`).
-   No spaces before or after the value.
+> 🔒 **The secret key is like a password.** Never put it on the website, in GitHub, in a chat or a screenshot.
+> If it ever leaks: **API Keys** → the three dots next to it → delete, then create a new secret key and put the new one into `config.yml`.
 
-### Step 3 – Optional: name and address of your server
+### Step 3 – Tell the plugin (on the Minecraft server)
 
-These are not secret, so they are **variables** (same page, tab **Variables**, button **New repository variable**):
+1. Build and upload the newest plugin `.jar` (README of the MinecraftPlugin repository, Parts 1–2).
+2. In the MineHosting panel, **stop** the server.
+3. In the file manager, open `plugins/ClyroLandeszentrale/config.yml`.
+4. Change the `supabase:` part at the bottom like this, with **your** URL and **secret** key:
 
-| Name | Value | What it does |
-|---|---|---|
-| `SERVER_NAME` | e.g. `Clyro Server` | The name at the top of the website. Without it, the first line of the server's MOTD is used. |
-| `SERVER_ADDRESS` | e.g. `play.yourserver.net` | Shows "Join us: ..." on the website, so friends know where to connect. |
+   ```yaml
+   supabase:
+     enabled: true
+     url: "https://abcd.supabase.co"
+     secret-key: "sb_secret_..."
+     sync-seconds: 30
+   ```
 
-### Step 4 – Switch on GitHub Pages
+   Keep the quotes `"`. Use 2 spaces at the start of the lines, no tabs.
+   (An old `database:` part from the MySQL version is removed by the plugin by itself.)
+5. **Save** and **start** the server. After a few seconds the console says:
 
-1. In **Settings**, on the left side, click **Pages**.
-2. Under **Build and deployment** → **Source**, choose **GitHub Actions**.
+   `Connected to Supabase (https://abcd.supabase.co). Stats are copied every 30 s for the website.`
 
-(That's all. You don't need to choose a branch.)
+6. Check: in Supabase, **Table Editor** → `players`. After 30 seconds you see the players there.
 
-### Step 5 – Start the first update
-
-1. Click the tab **Actions** (at the top of the repository).
-2. If GitHub asks, click **"I understand my workflows, go ahead and enable them"**.
-3. On the left, click **Update website**.
-4. On the right, click **Run workflow** → green **Run workflow** button.
-5. Wait about 1 minute. When the run has a **green check ✅**, open your website:
-
-   **https://toni01837463829.github.io/MinecraftServerWebsite/**
-
-From now on the website updates by itself **every 10 minutes**.
-
----
-
-## Something doesn't work?
-
-Open **Actions** → click on the newest **Update website** run → click **build** → open the step **"Read the stats from the database"**. It tells you what's wrong in simple words:
+If the console says `Could not copy stats to Supabase`, the end of that line says what to do:
 
 | Message | What to do |
 |---|---|
-| `The database secrets ... are not set yet` | Do Step 2. Check that the secret names are written exactly right. |
-| `user name or password is wrong, or the database doesn't allow connections from outside` | Check `DB_USER` and `DB_PASSWORD`. In the MineHosting panel, the database must allow connections from `%` (everywhere). |
-| `the host name (DB_HOST) was not found` | Check `DB_HOST`. Only the address, without `https://` and without `:3306`. |
-| `the database can't be reached from the internet` | Check `DB_HOST` and `DB_PORT`. Your database must allow connections from outside. Some hosting plans don't allow this – then ask MineHosting support "Can I connect to my MySQL database from outside (remote access)?" |
-| `the database name (DB_NAME) is wrong` | Check `DB_NAME`. |
-| `the tables don't exist yet` | In the plugin's `config.yml`, set `database: enabled: true` and restart the Minecraft server. Wait 1 minute and try again. |
+| `The tables don't exist yet` | Do Step 1. |
+| `No access to the tables` | Run `schema.sql` again (Step 1). Check that `secret-key` is the **secret** key. |
+| `Supabase did not accept the key` | The `secret-key` is wrong or is the publishable key. Copy it again (Step 2). |
+| `Wrong address` / `Supabase can't be reached` | Check `url`. It must look like `https://abcd.supabase.co`, nothing after `.co`. |
+| `config.yml: supabase.secret-key is the PUBLISHABLE key` | You put the wrong key in. Use the `sb_secret_` one. |
 
-You can change a secret any time: **Settings → Secrets and variables → Actions → ✏️ (pencil) next to the secret**. Then run the workflow again (Step 5).
+The game always keeps working, even if Supabase doesn't. Stats are saved on the server and copied later.
 
-The website says **"Server offline"** when the plugin hasn't written to the database for 5 minutes (for example when the Minecraft server is stopped).
+### Step 4 – Tell the website (GitHub)
 
-### The website stopped updating after a long time?
+1. Open https://github.com/Toni01837463829/MinecraftServerWebsite → **Settings**.
+2. Make the repository **public** (needed for free GitHub Pages): at the very bottom, **Danger Zone** → **Change visibility** → **Change to public**. Nothing secret is in this repository.
+3. On the left, click **Secrets and variables** → **Actions**, then the tab **Variables** (not Secrets!) → **New repository variable**. Add:
 
-GitHub pauses timed workflows in public repositories when nothing changed in the repository for **60 days**. You get an e-mail from GitHub. To start it again: **Actions → Update website → "Enable workflow"**.
+   | Name (copy it exactly) | Value |
+   |---|---|
+   | `SUPABASE_URL` | your **URL**, e.g. `https://abcd.supabase.co` |
+   | `SUPABASE_PUBLISHABLE_KEY` | your **publishable** key (`sb_publishable_...`) |
+   | `SERVER_NAME` (optional) | e.g. `Clyro Server`, shown at the top of the website |
+   | `SERVER_ADDRESS` (optional) | e.g. `play.yourserver.net`, shown as "Spiel mit: ..." |
+
+   No spaces before or after the values.
+4. On the left, click **Pages**. Under **Build and deployment → Source**, choose **GitHub Actions**.
+5. Click the tab **Actions** (top). If GitHub asks, click **I understand my workflows, go ahead and enable them**.
+   On the left click **Update website**, on the right **Run workflow** → **Run workflow**.
+6. After about 1 minute the run has a green ✅. Open the website:
+   **https://toni01837463829.github.io/MinecraftServerWebsite/**
+
+The website reads the stats live from Supabase and refreshes every minute by itself.
+You only need to run the workflow again when you change a variable or the website code (a push to `main` runs it too).
+
+**Old secrets from the MySQL version** (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`) are not used anymore. Delete them under **Secrets and variables → Actions → Secrets**.
+
+### Something doesn't work?
+
+| The website says | What to do |
+|---|---|
+| **Nicht eingerichtet** / "noch nicht mit Supabase verbunden" | The variables are missing or have a wrong name (Step 4.3). Then run the workflow again. |
+| "Der Schlüssel der Webseite stimmt nicht" | `SUPABASE_PUBLISHABLE_KEY` is wrong. Copy it again from Supabase, then run the workflow again. |
+| "Die Datenbank ist noch nicht eingerichtet" | Do Step 1. |
+| **Server offline** | The plugin hasn't written for 5 minutes: the Minecraft server is stopped, or the plugin can't reach Supabase (look at the server console, Step 3). |
+| **Keine Daten** | Supabase can't be reached right now, or `SUPABASE_URL` is wrong. |
+
+If the workflow run has a red ❌ with "SUPABASE_PUBLISHABLE_KEY is the SECRET key": you put the secret key into GitHub.
+Delete that variable, **delete that secret key in Supabase** and make a new one (it is not secret anymore), then use the publishable key.
+
+**Free Supabase projects are paused after 7 days without any use.** While your Minecraft server runs, the plugin uses it every 30 seconds, so this only happens if the server is off for a week. Then open the Supabase dashboard and click **Restore project**.
 
 ---
 
 ## For developers
 
-- `site/` – the website itself (plain HTML, CSS and JavaScript, no build tools). It only reads `data/stats.json`.
-- `scripts/export.mjs` – reads the database (tables `mc_players`, `mc_online`, `mc_clans`, `mc_clan_members`, `mc_server`) and writes `_site/` = `site/` + `data/stats.json`.
-- `.github/workflows/deploy.yml` – runs the export every 10 minutes and publishes `_site/` on GitHub Pages.
-- `docker/` – the test setup: `docker-compose.yml` (MariaDB + test website), `tables.sql` (the empty tables), `demo-data.sql` (optional made-up players), `test-website.mjs` (runs the export every 30 s and serves `_site/` on port 8080).
+- `site/` – the website (plain HTML, CSS and JavaScript, no build tools). `app.js` reads the 5 tables from Supabase's REST API (`/rest/v1/...`) with the publishable key from `config.js` and refreshes every 60 s while the page is visible.
+- `site/config.js` – empty by default ("not set up"). The workflow overwrites it with the repository variables.
+- `supabase/schema.sql` – the tables, read-only access for the website (Row Level Security) and write access for the plugin's secret key.
+- `.github/workflows/deploy.yml` – writes `config.js` and publishes `site/` on GitHub Pages (on push to `main` and "Run workflow").
+- `docker/` – the test setup: Postgres (runs `roles.sql` and `supabase/schema.sql` at the first start), PostgREST (the REST API Supabase uses) and `test-website.mjs` (serves `site/` and passes `/rest/v1/` to PostgREST, like Supabase). `demo-data.sql` has optional made-up players.
 
-Optional repository **variables**: `DB_TABLE_PREFIX` (default `mc_`, must match `database.table-prefix` in the plugin), `DB_SSL` (`true` for an encrypted database connection).
-
-Try it on your own PC (needs Node.js 20 or newer):
-
-```
-npm install
-set DB_HOST=... & set DB_NAME=... & set DB_USER=... & set DB_PASSWORD=...
-npm run preview
-```
-
-Without the `DB_...` values it builds the website in "not set up yet" mode.
+Tables: `players`, `online_players`, `clans`, `clan_members`, `server_status` (columns: see `supabase/schema.sql`). All times are milliseconds since 1970.

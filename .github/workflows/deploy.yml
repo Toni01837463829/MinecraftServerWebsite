@@ -1,18 +1,16 @@
-# Builds the website and publishes it on GitHub Pages.
+# Publishes the website on GitHub Pages, after every change in this repository and when you click
+# "Run workflow". The stats are NOT part of this: the page reads them live from Supabase.
 #
-# Every 10 minutes (and after every change in this repository, and when you click "Run workflow")
-# it reads the stats from the database and puts them on the website.
-#
-# The database login comes from this repository's secrets (Settings > Secrets and variables > Actions).
-# The secrets are only used here, on GitHub's computer. They are never put into the website.
+# It writes config.js from this repository's VARIABLES (Settings > Secrets and variables > Actions > Variables):
+#   SUPABASE_URL              like https://abcd.supabase.co
+#   SUPABASE_PUBLISHABLE_KEY  the publishable key (starts with sb_publishable_). It can only read, so it may be public.
+#   SERVER_NAME, SERVER_ADDRESS  optional, shown on the website
+# NEVER put the secret key here: everything in config.js is visible to everyone.
 name: Update website
 
 on:
   push:
     branches: [main]
-  schedule:
-    # Every 10 minutes. GitHub sometimes starts scheduled runs a few minutes late.
-    - cron: "*/10 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -32,31 +30,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install
-        run: npm ci --no-audit --no-fund
-
       - name: Set up Pages
-        id: pages
         uses: actions/configure-pages@v5
 
-      - name: Read the stats from the database
-        run: npm run export
+      - name: Write the website with config.js
         env:
-          DB_HOST: ${{ secrets.DB_HOST }}
-          DB_PORT: ${{ secrets.DB_PORT }}
-          DB_NAME: ${{ secrets.DB_NAME }}
-          DB_USER: ${{ secrets.DB_USER }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          DB_TABLE_PREFIX: ${{ vars.DB_TABLE_PREFIX }}
-          DB_SSL: ${{ vars.DB_SSL }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
           SERVER_NAME: ${{ vars.SERVER_NAME }}
           SERVER_ADDRESS: ${{ vars.SERVER_ADDRESS }}
-          PAGES_URL: ${{ steps.pages.outputs.base_url }}
+        run: |
+          rm -rf _site && cp -r site _site
+          node -e '
+            const env = n => (process.env[n] || "").trim();
+            const key = env("SUPABASE_PUBLISHABLE_KEY");
+            if (key.startsWith("sb_secret_")) {
+              console.log("::error::SUPABASE_PUBLISHABLE_KEY is the SECRET key. Delete it right away and create a new secret key in Supabase. Use the publishable key here.");
+              process.exit(1);
+            }
+            if (!env("SUPABASE_URL") || !key) {
+              console.log("::warning::The variables SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY are not set yet. The website says \"not set up\". See README.md, Setup.");
+            }
+            const config = {
+              supabaseUrl: env("SUPABASE_URL").replace(/\/+$/, "").replace(/\/rest\/v1$/, ""),
+              supabaseKey: key,
+              serverName: env("SERVER_NAME"),
+              serverAddress: env("SERVER_ADDRESS"),
+            };
+            require("fs").writeFileSync("_site/config.js", "window.SITE_CONFIG = " + JSON.stringify(config) + ";\n");
+            console.log("config.js written for " + (config.supabaseUrl || "(no Supabase address yet)"));
+          '
 
       - uses: actions/upload-pages-artifact@v3
         with:

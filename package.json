@@ -1,14 +1,10 @@
 {
   "name": "minecraft-server-website",
   "private": true,
-  "description": "Static stats website for the Minecraft server. GitHub Actions reads the database and builds it.",
+  "description": "Static stats website for the Minecraft server. The page reads the stats live from Supabase.",
   "type": "module",
   "scripts": {
-    "export": "node scripts/export.mjs",
-    "preview": "node scripts/export.mjs && npx --yes serve@14.2.4 _site"
-  },
-  "dependencies": {
-    "mysql2": "3.24.6"
+    "test-website": "node docker/test-website.mjs"
   },
   "engines": {
     "node": ">=20"

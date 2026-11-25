@@ -1,6 +1,6 @@
-// Stats website. Reads data/stats.json (made by GitHub Actions from the database every few minutes)
-// and draws the page for the current #route. No passwords or database access here: this file only
-// reads the finished JSON file.
+// Stats website. Reads the stats live from Supabase (written there by the Minecraft plugin) and draws
+// the page for the current #route. It uses the publishable key from config.js, which can only READ
+// the stats. No passwords or secret keys here.
 "use strict";
 
 const state = { data: null, players: [], clans: [], sort: { key: "playtime", desc: true }, query: "", page: null };
@@ -71,13 +71,107 @@ function stat(label, value, color = "") {
 
 // ---------------------------------------------------------------- data
 
+const CONFIG = window.SITE_CONFIG || {};
+// The plugin writes every 30 s. If the server didn't write for this long, it is off.
+const SERVER_STALE_MS = 5 * 60 * 1000;
+// Supabase sends at most 1000 rows at once; more players are read in parts.
+const PAGE_SIZE = 1000;
+
+/** Reads all rows of one table from Supabase. */
+async function table(name) {
+  const base = (CONFIG.supabaseUrl || location.origin).replace(/\/+$/, "");
+  const headers = { apikey: CONFIG.supabaseKey };
+  // Old-style keys (start with "eyJ") must also be sent as Bearer. New sb_publishable_ keys must not.
+  if (CONFIG.supabaseKey.startsWith("eyJ")) headers.Authorization = "Bearer " + CONFIG.supabaseKey;
+  const rows = [];
+  for (let offset = 0; ; offset += PAGE_SIZE) {
+    const r = await fetch(`${base}/rest/v1/${name}?select=*&limit=${PAGE_SIZE}&offset=${offset}`, { headers, cache: "no-store" });
+    if (!r.ok) {
+      const body = await r.text().catch(() => "");
+      const error = new Error(`${name}: ${r.status} ${body}`);
+      error.missingTables = /PGRST205|42P01|does not exist/.test(body);
+      error.badKey = r.status === 401 || r.status === 403;
+      throw error;
+    }
+    const page = await r.json();
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) return rows;
+  }
+}
+
+function firstLine(text) {
+  return String(text || "").split("\n")[0].trim();
+}
+
+/** Turns the Supabase tables into the data the pages use. */
+function build({ players, online, servers, clans, clanMembers }) {
+  const now = Date.now();
+  const server = servers.find(s => s.id === 1);
+  const serverUpdated = server ? Number(server.updated_at) : 0;
+  const up = !!server && now - serverUpdated < SERVER_STALE_MS;
+  const onlineById = new Map(up ? online.map(o => [o.uuid, o]) : []);
+  const clanById = new Map(clans.map(c => [c.id, {
+    id: c.id, name: c.name, tag: c.tag, color: c.color, owner: c.owner, created: Number(c.created),
+  }]));
+  const membership = new Map(clanMembers.map(m => [m.uuid, m]));
+  return {
+    configured: true,
+    generatedAt: serverUpdated,
+    server: {
+      name: CONFIG.serverName || firstLine(server?.motd) || "Minecraft Server",
+      address: CONFIG.serverAddress || "",
+      motd: server?.motd || "",
+      version: server?.version || "",
+      maxPlayers: Number(server?.max_players || 0),
+      onlineCount: onlineById.size,
+      updatedAt: serverUpdated,
+      up,
+    },
+    clans: [...clanById.values()].map(c => ({
+      ...c,
+      members: clanMembers.filter(m => m.clan_id === c.id).map(m => ({ uuid: m.uuid, role: m.role })),
+    })),
+    players: players.map(r => {
+      const o = onlineById.get(r.uuid);
+      const m = membership.get(r.uuid);
+      const clan = m ? clanById.get(m.clan_id) : null;
+      return {
+        uuid: r.uuid,
+        name: r.name,
+        firstJoin: Number(r.first_join),
+        lastSeen: Number(r.last_seen),
+        playtime: Number(r.playtime_seconds),
+        activeTime: Number(r.active_seconds),
+        blocksPlaced: Number(r.blocks_placed),
+        blocksBroken: Number(r.blocks_broken),
+        deaths: Number(r.deaths),
+        mobKills: Number(r.mob_kills),
+        playerKills: Number(r.player_kills),
+        advancements: Number(r.advancements),
+        online: !!o,
+        afk: !!o && !!o.afk,
+        world: o ? o.world : "",
+        clan: clan ? { id: clan.id, name: clan.name, tag: clan.tag, color: clan.color } : null,
+        clanRole: clan ? m.role : null,
+      };
+    }),
+  };
+}
+
+async function readData() {
+  if (!CONFIG.supabaseKey) {
+    return { configured: false, server: { name: CONFIG.serverName || "Minecraft Server", address: CONFIG.serverAddress || "" }, players: [], clans: [] };
+  }
+  const [players, online, servers, clans, clanMembers] = await Promise.all(
+    ["players", "online_players", "server_status", "clans", "clan_members"].map(table));
+  return build({ players, online, servers, clans, clanMembers });
+}
+
 async function load() {
   const live = document.getElementById("live");
   const liveText = document.getElementById("live-text");
   try {
-    const r = await fetch("data/stats.json?t=" + Date.now(), { cache: "no-store" });
-    if (!r.ok) throw new Error("stats.json " + r.status);
-    const data = await r.json();
+    const data = await readData();
     state.data = data;
     state.players = data.players || [];
     state.clans = data.clans || [];
@@ -95,9 +189,17 @@ async function load() {
     document.getElementById("updated").textContent = data.generatedAt ? "Aktualisiert um " + time(data.generatedAt) : "";
     render(false);
   } catch (e) {
+    console.warn("Could not read the stats from Supabase:", e);
     live.classList.add("offline");
     liveText.textContent = "Keine Daten";
-    if (!state.data) app.innerHTML = `<div class="card loading">Die Statistiken können gerade nicht geladen werden. Versuche es in einer Minute nochmal.</div>`;
+    if (!state.data) {
+      const why = e.missingTables
+        ? "Die Datenbank ist noch nicht eingerichtet (supabase/schema.sql im Supabase SQL Editor ausführen)."
+        : e.badKey
+          ? "Der Schlüssel der Webseite stimmt nicht (SUPABASE_PUBLISHABLE_KEY prüfen)."
+          : "Versuche es in einer Minute nochmal.";
+      app.innerHTML = `<div class="card loading">Die Statistiken können gerade nicht geladen werden. ${esc(why)}</div>`;
+    }
   }
 }
 
@@ -130,12 +232,9 @@ function render(navigated = true) {
 function notices() {
   const d = state.data;
   if (!d.configured) {
-    return `<div class="notice">Diese Webseite ist noch nicht mit der Datenbank verbunden. Trage die Datenbank-Secrets im
-      GitHub-Repository ein (siehe README.md, "Setup") und starte dann den Workflow "Update website".</div>`;
-  }
-  if (d.error) {
-    return `<div class="notice">Beim letzten Update konnte die Datenbank nicht gelesen werden. Die Zahlen können also veraltet sein.
-      (${esc(d.error)})</div>`;
+    return `<div class="notice">Diese Webseite ist noch nicht mit Supabase verbunden. Trage SUPABASE_URL und
+      SUPABASE_PUBLISHABLE_KEY als Variablen im GitHub-Repository ein (siehe README.md, "Setup") und starte dann den
+      Workflow "Update website".</div>`;
   }
   return "";
 }
@@ -379,5 +478,6 @@ app.addEventListener("input", e => {
 
 window.addEventListener("hashchange", () => { render(true); window.scrollTo(0, 0); });
 load();
-// The file changes about every 10 minutes; check for a new one every 2 minutes.
-setInterval(load, 120000);
+// The plugin writes every 30 s. Read again every 60 s, but only while the page is visible (less load).
+setInterval(() => { if (!document.hidden) load(); }, 60000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
