@@ -106,7 +106,7 @@ main { max-width: 1120px; margin: 0 auto; padding: 28px 20px 16px; }
 
 .loading { text-align: center; color: var(--muted); padding: 48px; }
 
-.grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); margin-bottom: 20px; }
+.grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); margin-bottom: 20px; }
 .grid > .card { margin-bottom: 0; }
 
 /* ---------------------------------------------------------------- stats */
@@ -165,14 +165,16 @@ main { max-width: 1120px; margin: 0 auto; padding: 28px 20px 16px; }
 /* ---------------------------------------------------------------- leaderboards */
 
 .board { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-.board li a { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 10px; }
+.board li a { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 10px; min-width: 0; }
 .board li a:hover { background: var(--soft); }
-.rank { font-family: var(--mc); font-weight: 700; width: 22px; text-align: center; color: var(--muted); font-size: 13px; }
+.rank { flex: none; font-family: var(--mc); font-weight: 700; width: 22px; text-align: center; color: var(--muted); font-size: 13px; }
 .board li:first-child .rank { color: var(--gold); }
-.board .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.board .amount { margin-left: auto; font-family: var(--mc); font-size: 14px; white-space: nowrap; }
+/* Long names get "..." at the end, so the amount on the right always fits inside the card. */
+.board .name { flex: 1 1 auto; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.board .amount { flex: none; margin-left: auto; font-family: var(--mc); font-size: 14px; white-space: nowrap; }
 .bar { height: 4px; border-radius: 4px; background: var(--bg-deep); margin: 0 8px 6px 70px; overflow: hidden; }
 .bar span { display: block; height: 100%; background: var(--green); border-radius: 4px; opacity: .7; }
+.board.red .bar span { background: var(--red); }
 
 /* ---------------------------------------------------------------- table */
 
@@ -252,6 +254,9 @@ footer {
   .stat { padding: 12px 14px; }
   .stat .value { font-size: 20px; }
   .stat .value .nb small { font-size: 13px; }
+  .board li a { gap: 8px; padding: 7px 4px; }
+  .board .amount { font-size: 13px; }
+  .bar { margin: 0 4px 6px 68px; }
   .page-head h1, .profile h1 { font-size: 22px; }
   .head.xl { width: 64px; height: 64px; border-radius: 14px; }
   .search { max-width: none; }
