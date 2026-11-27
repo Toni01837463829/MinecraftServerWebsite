@@ -33,8 +33,8 @@ alter table public.players add column if not exists fish_caught bigint not null 
 alter table public.players add column if not exists animals_bred bigint not null default 0;
 alter table public.players add column if not exists villager_trades bigint not null default 0;
 alter table public.players add column if not exists items_crafted bigint not null default 0;
--- "Diamanten abgebaut" was removed again (plugin 2.1.1).
-alter table public.players drop column if exists diamonds_mined;
+-- Diamond ores mined (plugin version 2.4, from Minecraft's own statistics).
+alter table public.players add column if not exists diamonds_mined bigint not null default 0;
 
 -- Who is online right now.
 create table if not exists public.online_players (

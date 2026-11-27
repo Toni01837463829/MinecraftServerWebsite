@@ -175,6 +175,7 @@ main { max-width: 1120px; margin: 0 auto; padding: 28px 20px 16px; }
 .bar { height: 4px; border-radius: 4px; background: var(--bg-deep); margin: 0 8px 6px 70px; overflow: hidden; }
 .bar span { display: block; height: 100%; background: var(--green); border-radius: 4px; opacity: .7; }
 .board.red .bar span { background: var(--red); }
+.board.blue .bar span { background: var(--blue); }
 
 /* ---------------------------------------------------------------- table */
 
