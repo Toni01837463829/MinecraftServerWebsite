@@ -273,14 +273,14 @@ function notices() {
   return "";
 }
 
-function board(title, key, show) {
+function board(title, key, show, color = "") {
   const top = [...state.players].filter(p => p[key] > 0).sort((a, b) => b[key] - a[key]).slice(0, 5);
   const max = top.length ? top[0][key] : 1;
   const rows = top.map((p, i) => `<li>
       <a href="#/player/${esc(p.uuid)}"><span class="rank">${i + 1}</span>${head(p.uuid, "head sm", 64, p.name)}
         <span class="name">${clanTag(p.clan)}${esc(p.name)}</span><span class="amount">${show(p[key])}</span></a>
       <div class="bar"><span style="width:${Math.max(4, Math.round(p[key] / max * 100))}%"></span></div></li>`).join("");
-  return `<section class="card"><h2>${esc(title)}</h2>${rows ? `<ol class="board">${rows}</ol>` : `<p class="empty">Noch niemand.</p>`}</section>`;
+  return `<section class="card"><h2>${esc(title)}</h2>${rows ? `<ol class="board ${color}">${rows}</ol>` : `<p class="empty">Noch niemand.</p>`}</section>`;
 }
 
 function homePage() {
@@ -315,6 +315,7 @@ function homePage() {
       ${board("Meiste Monster getötet", "mobKills", num)}
       ${board("Meiste Achievements", "advancements", num)}
       ${board("Meiste Strecke gereist", "distance", distance)}
+      ${board("Meiste Tode", "deaths", num, "red")}
     </div>`;
 }
 
