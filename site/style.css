@@ -120,7 +120,12 @@ main { max-width: 1120px; margin: 0 auto; padding: 28px 20px 16px; }
 }
 .stats.flat { margin: 0; }
 .stats.flat .stat { box-shadow: none; background: var(--soft); border-color: transparent; }
-.stat .label { font-size: 13px; color: var(--muted); font-weight: 500; }
+.stat .label { font-size: 13px; color: var(--muted); font-weight: 500; display: flex; align-items: center; gap: 6px; }
+
+/* Pixel-art item icons (icons.js) next to tile labels and leaderboard titles. */
+.icon { width: 18px; height: 18px; flex: none; image-rendering: pixelated; }
+.card h2 .title { display: inline-flex; align-items: center; gap: 8px; }
+.card h2 .icon { width: 20px; height: 20px; }
 /* Long values like "1 h 59 min" never spill out of the tile: units are small, and number+unit pairs
    go onto a second line if the tile is still too narrow. */
 .stat .value { font-family: var(--mc); font-weight: 700; font-size: 24px; line-height: 1.25; margin-top: 4px; overflow-wrap: anywhere; }

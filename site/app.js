@@ -91,8 +91,13 @@ function statusPill(p) {
   return `<span class="pill offline">${esc(ago(p.lastSeen))}</span>`;
 }
 
-function stat(label, value, color = "", title = "") {
-  return `<div class="stat"${title ? ` title="${esc(title)}"` : ""}><div class="label">${esc(label)}</div><div class="value ${color}">${value}</div></div>`;
+/** A pixel-art item icon from icons.js, or nothing. */
+function icon(name) {
+  return (name && window.ICONS && window.ICONS[name]) || "";
+}
+
+function stat(label, value, color = "", title = "", iconName = "") {
+  return `<div class="stat"${title ? ` title="${esc(title)}"` : ""}><div class="label">${icon(iconName)}${esc(label)}</div><div class="value ${color}">${value}</div></div>`;
 }
 
 // ---------------------------------------------------------------- data
@@ -274,14 +279,14 @@ function notices() {
   return "";
 }
 
-function board(title, key, show, color = "") {
+function board(title, key, show, color = "", iconName = "") {
   const top = [...state.players].filter(p => p[key] > 0).sort((a, b) => b[key] - a[key]).slice(0, 5);
   const max = top.length ? top[0][key] : 1;
   const rows = top.map((p, i) => `<li>
       <a href="#/player/${esc(p.uuid)}"><span class="rank">${i + 1}</span>${head(p.uuid, "head sm", 64, p.name)}
         <span class="name">${clanTag(p.clan)}${esc(p.name)}</span><span class="amount">${show(p[key])}</span></a>
       <div class="bar"><span style="width:${Math.max(4, Math.round(p[key] / max * 100))}%"></span></div></li>`).join("");
-  return `<section class="card"><h2>${esc(title)}</h2>${rows ? `<ol class="board ${color}">${rows}</ol>` : `<p class="empty">Noch niemand.</p>`}</section>`;
+  return `<section class="card"><h2><span class="title">${icon(iconName)}${esc(title)}</span></h2>${rows ? `<ol class="board ${color}">${rows}</ol>` : `<p class="empty">Noch niemand.</p>`}</section>`;
 }
 
 function homePage() {
@@ -296,28 +301,28 @@ function homePage() {
   return `
     <div class="page-head"><h1>Übersicht</h1>${join}</div>
     <div class="stats home">
-      ${stat("Online", `${s.up ? online.length : 0}<small> / ${s.maxPlayers || 0}</small>`, "green")}
-      ${stat("Spieler", num(players.length))}
-      ${stat("Clans", num(state.clans.length))}
-      ${stat("Gespielte Zeit", units(duration(sum("playtime"))))}
-      ${stat("Blöcke gesetzt", num(sum("blocksPlaced")))}
-      ${stat("Zurückgelegt", units(distance(sum("distance"))), "", "Zu Fuß, schwimmend, mit Elytra, Boot, Pferd und mehr")}
-      ${stat("Mob-Kills", num(sum("mobKills")))}
-      ${stat("Tode", num(sum("deaths")), "red")}
+      ${stat("Online", `${s.up ? online.length : 0}<small> / ${s.maxPlayers || 0}</small>`, "green", "", "lime_dye")}
+      ${stat("Spieler", num(players.length), "", "", "player_head")}
+      ${stat("Clans", num(state.clans.length), "", "", "white_banner")}
+      ${stat("Gespielte Zeit", units(duration(sum("playtime"))), "", "", "clock")}
+      ${stat("Blöcke gesetzt", num(sum("blocksPlaced")), "", "", "grass_block")}
+      ${stat("Zurückgelegt", units(distance(sum("distance"))), "", "Zu Fuß, schwimmend, mit Elytra, Boot, Pferd und mehr", "leather_boots")}
+      ${stat("Mob-Kills", num(sum("mobKills")), "", "", "iron_sword")}
+      ${stat("Tode", num(sum("deaths")), "red", "", "skeleton_skull")}
     </div>
     <div class="grid">
       <section class="card">
-        <h2>Online <span class="hint">${s.up ? "um " + time(s.updatedAt) : "Server offline"}</span></h2>
+        <h2><span class="title">${icon("ender_eye")}Online</span> <span class="hint">${s.up ? "um " + time(s.updatedAt) : "Server offline"}</span></h2>
         ${onlineList ? `<ul class="people">${onlineList}</ul>` : `<p class="empty">${s.up ? "Gerade ist niemand online." : "Der Server ist offline."}</p>`}
       </section>
-      ${board("Meiste Spielzeit", "playtime", duration)}
-      ${board("Meiste Blöcke platziert", "blocksPlaced", num)}
-      ${board("Meiste Blöcke abgebaut", "blocksBroken", num)}
-      ${board("Meiste Monster getötet", "mobKills", num)}
-      ${board("Meiste Achievements", "advancements", num)}
-      ${board("Meiste Strecke gereist", "distance", distance)}
-      ${board("Meiste Diamanten abgebaut", "diamonds", num, "blue")}
-      ${board("Meiste Tode", "deaths", num, "red")}
+      ${board("Meiste Spielzeit", "playtime", duration, "", "clock")}
+      ${board("Meiste Blöcke platziert", "blocksPlaced", num, "", "bricks")}
+      ${board("Meiste Blöcke abgebaut", "blocksBroken", num, "", "diamond_pickaxe")}
+      ${board("Meiste Monster getötet", "mobKills", num, "", "zombie_head")}
+      ${board("Meiste Achievements", "advancements", num, "", "golden_apple")}
+      ${board("Meiste Strecke gereist", "distance", distance, "", "compass")}
+      ${board("Meiste Diamanten abgebaut", "diamonds", num, "blue", "diamond")}
+      ${board("Meiste Tode", "deaths", num, "red", "totem")}
     </div>`;
 }
 
