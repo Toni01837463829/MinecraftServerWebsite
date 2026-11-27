@@ -307,12 +307,11 @@ function homePage() {
         ${onlineList ? `<ul class="people">${onlineList}</ul>` : `<p class="empty">${s.up ? "Gerade ist niemand online." : "Der Server ist offline."}</p>`}
       </section>
       ${board("Meiste Spielzeit", "playtime", duration)}
-      ${board("Top-Baumeister", "blocksPlaced", num)}
-      ${board("Top-Miner", "blocksBroken", num)}
-      ${board("Monsterjäger", "mobKills", num)}
-      ${board("Meiste Fortschritte", "advancements", num)}
-      ${board("Weltenbummler", "distance", distance)}
-      ${board("Anglerkönig", "fish", num)}
+      ${board("Meiste Blöcke platziert", "blocksPlaced", num)}
+      ${board("Meiste Blöcke abgebaut", "blocksBroken", num)}
+      ${board("Meiste Monster getötet", "mobKills", num)}
+      ${board("Meiste Achievements", "advancements", num)}
+      ${board("Meiste Strecke gereist", "distance", distance)}
     </div>`;
 }
 
@@ -326,7 +325,7 @@ const columns = [
   { key: "mobKills", label: "Mob-Kills", cell: p => num(p.mobKills), num: true },
   { key: "deaths", label: "Tode", cell: p => num(p.deaths), num: true },
   { key: "distance", label: "Strecke", cell: p => distance(p.distance), num: true },
-  { key: "advancements", label: "Fortschritte", cell: p => num(p.advancements), num: true },
+  { key: "advancements", label: "Achievements", cell: p => num(p.advancements), num: true },
 ];
 
 function playersPage() {
@@ -406,7 +405,7 @@ function playerPage(uuid) {
         stat("Fische gefangen", num(p.fish)),
         stat("Tiere gezüchtet", num(p.bred)),
         stat("Dorfbewohner-Handel", num(p.trades)),
-        stat("Fortschritte", num(p.advancements), "gold"),
+        stat("Achievements", num(p.advancements), "gold"),
       ])}
     </section>`;
 }
@@ -481,7 +480,7 @@ const COMMANDS = [
     ["/unlockmob", "Schau einen gesperrten Mob an: er kann wieder ganz normal verschwinden. Geht nur bei Mobs, die du selbst gesperrt hast (Admins dürfen alle entsperren).", "Alle"],
   ]},
   { title: "Statistiken", intro: "Alles, was du im Spiel siehst, steht auch hier auf der Webseite.", list: [
-    ["/stats", "Zeigt deine Spielzeit (und davon aktive Zeit), längste Sitzung, Logins, gesetzte und abgebaute Blöcke, gecraftete Items, getötete Mobs, Tode, Fortschritte, zurückgelegte Strecke, gefangene Fische, gezüchtete Tiere und Handel mit Dorfbewohnern. Auch als /playtime.", "Alle"],
+    ["/stats", "Zeigt deine Spielzeit (und davon aktive Zeit), längste Sitzung, Logins, gesetzte und abgebaute Blöcke, gecraftete Items, getötete Mobs, Tode, Achievements, zurückgelegte Strecke, gefangene Fische, gezüchtete Tiere und Handel mit Dorfbewohnern. Auch als /playtime.", "Alle"],
     ["/clyro", "Zeigt alle Befehle mit kurzer Erklärung im Chat. Auch als /cl.", "Alle"],
   ]},
   { title: "Admins", intro: "Nur für Admins (Operatoren) des Servers.", list: [
