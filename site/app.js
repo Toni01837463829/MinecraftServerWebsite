@@ -182,6 +182,7 @@ function build({ players, online, servers, clans, clanMembers }) {
         bred: Number(r.animals_bred || 0),
         trades: Number(r.villager_trades || 0),
         crafted: Number(r.items_crafted || 0),
+        diamonds: Number(r.diamonds_mined || 0),
         online: !!o,
         afk: !!o && !!o.afk,
         world: o ? o.world : "",
@@ -315,6 +316,7 @@ function homePage() {
       ${board("Meiste Monster getötet", "mobKills", num)}
       ${board("Meiste Achievements", "advancements", num)}
       ${board("Meiste Strecke gereist", "distance", distance)}
+      ${board("Meiste Diamanten abgebaut", "diamonds", num, "blue")}
       ${board("Meiste Tode", "deaths", num, "red")}
     </div>`;
 }
@@ -396,6 +398,7 @@ function playerPage(uuid) {
       ${statGroup("Bauen & Abbauen", [
         stat("Blöcke gesetzt", num(p.blocksPlaced)),
         stat("Blöcke abgebaut", num(p.blocksBroken)),
+        stat("Diamanten abgebaut", num(p.diamonds), "blue"),
         stat("Items gecraftet", num(p.crafted)),
       ])}
       ${statGroup("Kampf", [
@@ -459,7 +462,7 @@ function clansPage() {
 // ---------------------------------------------------------------- info page (commands)
 
 const COMMANDS = [
-  { title: "Clans", intro: "Gründe mit Freunden einen Clan. Euer Clan-Tag steht in der Tab-Liste vor eurem Namen, ihr habt einen eigenen Chat und eine gemeinsame Truhe. Geld gibt es keins.", list: [
+  { title: "Clans", intro: "Gründe mit Freunden einen Clan. Euer Clan-Tag steht in der Tab-Liste und im Chat vor eurem Namen, ihr habt einen eigenen Chat und eine gemeinsame Truhe. Geld gibt es keins.", list: [
     ["/clan create <Name> <Tag>", "Gründet einen neuen Clan. Name: 3 bis 16 Zeichen (Buchstaben, Zahlen, _ oder -). Tag: 2 bis 5 Buchstaben oder Zahlen, zum Beispiel BFX.", "Alle"],
     ["/clan invite <Spieler>", "Lädt einen Spieler in deinen Clan ein. Die Einladung gilt 5 Minuten.", "Besitzer, Offiziere"],
     ["/clan accept", "Nimmt eine Clan-Einladung an.", "Alle"],
@@ -484,7 +487,7 @@ const COMMANDS = [
     ["/unlockmob", "Schau einen gesperrten Mob an: er kann wieder ganz normal verschwinden. Geht nur bei Mobs, die du selbst gesperrt hast (Admins dürfen alle entsperren).", "Alle"],
   ]},
   { title: "Statistiken", intro: "Alles, was du im Spiel siehst, steht auch hier auf der Webseite.", list: [
-    ["/stats", "Zeigt deine Spielzeit (und davon aktive Zeit), längste Sitzung, Logins, gesetzte und abgebaute Blöcke, gecraftete Items, getötete Mobs, Tode, Achievements, zurückgelegte Strecke, gefangene Fische, gezüchtete Tiere und Handel mit Dorfbewohnern. Auch als /playtime.", "Alle"],
+    ["/stats", "Zeigt deine Spielzeit (und davon aktive Zeit), längste Sitzung, Logins, gesetzte und abgebaute Blöcke, gecraftete Items, abgebaute Diamanten, getötete Mobs, Tode, Achievements, zurückgelegte Strecke, gefangene Fische, gezüchtete Tiere und Handel mit Dorfbewohnern. Auch als /playtime.", "Alle"],
     ["/clyro", "Zeigt alle Befehle mit kurzer Erklärung im Chat. Auch als /cl.", "Alle"],
   ]},
   { title: "Admins", intro: "Nur für Admins (Operatoren) des Servers.", list: [
