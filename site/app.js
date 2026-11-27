@@ -72,9 +72,12 @@ const FALLBACK_HEAD = "data:image/svg+xml," + encodeURIComponent(
   '<rect x="5" y="4" width="2" height="1" fill="#fff"/><rect x="5" y="4" width="1" height="1" fill="#4a3a8c"/>' +
   '<rect x="3" y="5" width="2" height="1" fill="#8c5a40"/><rect x="2" y="6" width="4" height="1" fill="#6a4030"/></svg>');
 
-function head(uuid, cls = "head", size = 64) {
+function head(uuid, cls = "head", size = 64, name = "") {
   // Player faces come from mc-heads.net. If it can't be reached, a simple face shows instead.
-  return `<img class="${cls}" src="https://mc-heads.net/avatar/${esc(uuid)}/${size}" alt="" loading="lazy"
+  // Real Minecraft accounts have version-4 UUIDs (the "4" in xxxxxxxx-xxxx-4xxx-...). Servers in offline
+  // mode (online-mode=false) make up other UUIDs that mc-heads.net doesn't know, so there the name is used.
+  const id = /^[0-9a-f]{8}-[0-9a-f]{4}-4/i.test(uuid) || !name ? uuid : name;
+  return `<img class="${cls}" src="https://mc-heads.net/avatar/${encodeURIComponent(id)}/${size}" alt="" loading="lazy"
               onerror="this.onerror=null;this.src=FALLBACK_HEAD">`;
 }
 
@@ -274,7 +277,7 @@ function board(title, key, show) {
   const top = [...state.players].filter(p => p[key] > 0).sort((a, b) => b[key] - a[key]).slice(0, 5);
   const max = top.length ? top[0][key] : 1;
   const rows = top.map((p, i) => `<li>
-      <a href="#/player/${esc(p.uuid)}"><span class="rank">${i + 1}</span>${head(p.uuid, "head sm")}
+      <a href="#/player/${esc(p.uuid)}"><span class="rank">${i + 1}</span>${head(p.uuid, "head sm", 64, p.name)}
         <span class="name">${clanTag(p.clan)}${esc(p.name)}</span><span class="amount">${show(p[key])}</span></a>
       <div class="bar"><span style="width:${Math.max(4, Math.round(p[key] / max * 100))}%"></span></div></li>`).join("");
   return `<section class="card"><h2>${esc(title)}</h2>${rows ? `<ol class="board">${rows}</ol>` : `<p class="empty">Noch niemand.</p>`}</section>`;
@@ -285,7 +288,7 @@ function homePage() {
   const players = state.players;
   const online = players.filter(p => p.online).sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
   const sum = key => players.reduce((total, p) => total + (p[key] || 0), 0);
-  const onlineList = online.map(p => `<li><a href="#/player/${esc(p.uuid)}">${head(p.uuid)}
+  const onlineList = online.map(p => `<li><a href="#/player/${esc(p.uuid)}">${head(p.uuid, "head", 64, p.name)}
       <span class="name">${clanTag(p.clan)}${esc(p.name)}</span>
       <span class="meta">${p.afk ? `<span class="pill afk"><span class="dot"></span>AFK</span>` : esc(p.world)}</span></a></li>`).join("");
   const join = s.address ? `<p>Spiel mit: <span class="join">${esc(s.address)}</span></p>` : `<p>Was gerade auf dem Server los ist.</p>`;
@@ -316,7 +319,7 @@ function homePage() {
 }
 
 const columns = [
-  { key: "name", label: "Spieler", cell: p => `<a href="#/player/${esc(p.uuid)}">${head(p.uuid, "head sm")}${clanTag(p.clan)}<span class="pname">${esc(p.name)}</span></a>`, text: true },
+  { key: "name", label: "Spieler", cell: p => `<a href="#/player/${esc(p.uuid)}">${head(p.uuid, "head sm", 64, p.name)}${clanTag(p.clan)}<span class="pname">${esc(p.name)}</span></a>`, text: true },
   { key: "lastSeen", label: "Status", cell: p => statusPill(p), sortValue: p => p.online ? Number.MAX_SAFE_INTEGER - (p.afk ? 1 : 0) : p.lastSeen },
   { key: "playtime", label: "Spielzeit", cell: p => duration(p.playtime), num: true },
   { key: "activeTime", label: "Aktiv", cell: p => duration(p.activeTime), num: true },
@@ -368,7 +371,7 @@ function playerPage(uuid) {
     <a class="back" href="#/players">← Alle Spieler</a>
     <section class="card">
       <div class="profile">
-        ${head(p.uuid, "head xl", 128)}
+        ${head(p.uuid, "head xl", 128, p.name)}
         <div>
           <h1>${esc(p.name)}</h1>
           <div class="sub">
@@ -446,7 +449,7 @@ function clansPage() {
         <div><b>${num(c.fish)}</b><span>Fische</span></div>
         <div><b>${distance(c.distance)}</b><span>zurückgelegt</span></div>
       </div>
-      <div class="members">${[...c.members].sort((a, b) => (ROLE_ORDER[a.role] ?? 3) - (ROLE_ORDER[b.role] ?? 3) || a.player.name.localeCompare(b.player.name)).map(m => `<a class="member" href="#/player/${esc(m.uuid)}">${head(m.uuid)}
+      <div class="members">${[...c.members].sort((a, b) => (ROLE_ORDER[a.role] ?? 3) - (ROLE_ORDER[b.role] ?? 3) || a.player.name.localeCompare(b.player.name)).map(m => `<a class="member" href="#/player/${esc(m.uuid)}">${head(m.uuid, "head", 64, m.player.name)}
           ${esc(m.player.name)}${m.role !== "member" ? `<span class="role">${esc(roleName(m.role))}</span>` : ""}
           ${m.player.online ? `<span class="dot" title="online"></span>` : ""}</a>`).join("")}</div>
     </section>`).join("")}</div>`;
