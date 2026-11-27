@@ -179,7 +179,6 @@ function build({ players, online, servers, clans, clanMembers }) {
         bred: Number(r.animals_bred || 0),
         trades: Number(r.villager_trades || 0),
         crafted: Number(r.items_crafted || 0),
-        diamonds: Number(r.diamonds_mined || 0),
         online: !!o,
         afk: !!o && !!o.afk,
         world: o ? o.world : "",
@@ -299,7 +298,7 @@ function homePage() {
       ${stat("Gespielte Zeit", units(duration(sum("playtime"))))}
       ${stat("Blöcke gesetzt", num(sum("blocksPlaced")))}
       ${stat("Zurückgelegt", units(distance(sum("distance"))), "", "Zu Fuß, schwimmend, mit Elytra, Boot, Pferd und mehr")}
-      ${stat("Diamanten abgebaut", num(sum("diamonds")), "blue")}
+      ${stat("Mob-Kills", num(sum("mobKills")))}
       ${stat("Tode", num(sum("deaths")), "red")}
     </div>
     <div class="grid">
@@ -313,7 +312,6 @@ function homePage() {
       ${board("Monsterjäger", "mobKills", num)}
       ${board("Meiste Fortschritte", "advancements", num)}
       ${board("Weltenbummler", "distance", distance)}
-      ${board("Diamantenjäger", "diamonds", num)}
       ${board("Anglerkönig", "fish", num)}
     </div>`;
 }
@@ -328,7 +326,6 @@ const columns = [
   { key: "mobKills", label: "Mob-Kills", cell: p => num(p.mobKills), num: true },
   { key: "deaths", label: "Tode", cell: p => num(p.deaths), num: true },
   { key: "distance", label: "Strecke", cell: p => distance(p.distance), num: true },
-  { key: "diamonds", label: "Diamanten", cell: p => num(p.diamonds), num: true },
   { key: "advancements", label: "Fortschritte", cell: p => num(p.advancements), num: true },
 ];
 
@@ -396,7 +393,6 @@ function playerPage(uuid) {
       ${statGroup("Bauen & Abbauen", [
         stat("Blöcke gesetzt", num(p.blocksPlaced)),
         stat("Blöcke abgebaut", num(p.blocksBroken)),
-        stat("Diamanten abgebaut", num(p.diamonds), "blue"),
         stat("Items gecraftet", num(p.crafted)),
       ])}
       ${statGroup("Kampf", [
@@ -434,8 +430,8 @@ function clansPage() {
       playtime: members.reduce((t, m) => t + m.player.playtime, 0),
       blocks: members.reduce((t, m) => t + m.player.blocksPlaced, 0),
       mobKills: members.reduce((t, m) => t + m.player.mobKills, 0),
+      fish: members.reduce((t, m) => t + m.player.fish, 0),
       distance: members.reduce((t, m) => t + m.player.distance, 0),
-      diamonds: members.reduce((t, m) => t + m.player.diamonds, 0),
       online: members.filter(m => m.player.online).length,
     };
   }).sort((a, b) => b.members.length - a.members.length || b.playtime - a.playtime);
@@ -448,7 +444,7 @@ function clansPage() {
         <div><b>${duration(c.playtime)}</b><span>gespielt</span></div>
         <div><b>${num(c.blocks)}</b><span>Blöcke gesetzt</span></div>
         <div><b>${num(c.mobKills)}</b><span>Mob-Kills</span></div>
-        <div><b>${num(c.diamonds)}</b><span>Diamanten</span></div>
+        <div><b>${num(c.fish)}</b><span>Fische</span></div>
         <div><b>${distance(c.distance)}</b><span>zurückgelegt</span></div>
       </div>
       <div class="members">${[...c.members].sort((a, b) => (ROLE_ORDER[a.role] ?? 3) - (ROLE_ORDER[b.role] ?? 3) || a.player.name.localeCompare(b.player.name)).map(m => `<a class="member" href="#/player/${esc(m.uuid)}">${head(m.uuid)}
@@ -485,7 +481,7 @@ const COMMANDS = [
     ["/unlockmob", "Schau einen gesperrten Mob an: er kann wieder ganz normal verschwinden. Geht nur bei Mobs, die du selbst gesperrt hast (Admins dürfen alle entsperren).", "Alle"],
   ]},
   { title: "Statistiken", intro: "Alles, was du im Spiel siehst, steht auch hier auf der Webseite.", list: [
-    ["/stats", "Zeigt deine Spielzeit (und davon aktive Zeit), längste Sitzung, Logins, gesetzte und abgebaute Blöcke, gecraftete Items, abgebaute Diamanten, getötete Mobs, Tode, Fortschritte, zurückgelegte Strecke, gefangene Fische, gezüchtete Tiere und Handel mit Dorfbewohnern. Auch als /playtime.", "Alle"],
+    ["/stats", "Zeigt deine Spielzeit (und davon aktive Zeit), längste Sitzung, Logins, gesetzte und abgebaute Blöcke, gecraftete Items, getötete Mobs, Tode, Fortschritte, zurückgelegte Strecke, gefangene Fische, gezüchtete Tiere und Handel mit Dorfbewohnern. Auch als /playtime.", "Alle"],
     ["/clyro", "Zeigt alle Befehle mit kurzer Erklärung im Chat. Auch als /cl.", "Alle"],
   ]},
   { title: "Admins", intro: "Nur für Admins (Operatoren) des Servers.", list: [
